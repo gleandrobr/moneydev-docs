@@ -1,29 +1,29 @@
 ---
-title: "Retrieve a customer"
-sidebarTitle: "Retrieve customer"
-description: "Fetch a single customer by ID."
+title: "Consultar um cliente"
+sidebarTitle: "Consultar cliente"
+description: "Busca um único cliente pelo ID."
 ---
 
 <Info>
-  `GET /v1/customers/{customerId}` &nbsp;·&nbsp; Requires scope `customers:read`
+  `GET /v1/customers/{customerId}` &nbsp;·&nbsp; Requer o escopo `customers:read`
 </Info>
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="customerId" type="string" required>
-  The customer ID, e.g. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`. A value that isn't a well-formed `cus_` ID returns `400` (`invalid_customer_id`).
+  O ID do cliente, ex. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`. Um valor que não seja um ID `cus_` bem formado retorna `400` (`invalid_customer_id`).
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl https://api.moneydev.com.br/v1/customers/cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
-`200 OK` with the [customer object](/api-reference/customers/create#customer-object).
+`200 OK` com o [objeto de cliente](/api-reference/customers/create#objeto-de-cliente).
 
 ```json
 {
@@ -40,9 +40,9 @@ curl https://api.moneydev.com.br/v1/customers/cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a
 }
 ```
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_customer_id` | The path segment is not a valid `cus_` ID |
-| `404` | `customer_not_found` | No such customer on your account |
+| `400` | `invalid_customer_id` | O trecho do caminho não é um ID `cus_` válido |
+| `404` | `customer_not_found` | Não existe esse cliente na sua conta |

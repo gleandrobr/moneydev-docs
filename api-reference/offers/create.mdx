@@ -1,60 +1,60 @@
 ---
-title: "Create an offer"
-sidebarTitle: "Create offer"
-description: "Add a priced offer to a product."
+title: "Criar uma oferta"
+sidebarTitle: "Criar oferta"
+description: "Adiciona uma oferta com preço a um produto."
 ---
 
 <Info>
-  `POST /v1/products/{productId}/offers` &nbsp;·&nbsp; Requires scope `products:write`
+  `POST /v1/products/{productId}/offers` &nbsp;·&nbsp; Requer o escopo `products:write`
 </Info>
 
-An **offer** is a specific price for a product — one-time or recurring. A product can have several; exactly one is the default.
+Uma **oferta** é um preço específico de um produto — avulso ou recorrente. Um produto pode ter várias; exatamente uma é a padrão.
 
 <Note>
-  The new offer becomes the product's default if you pass `is_default: true`, **or** if the product currently has no active default. Promoting an offer to default demotes the previous one.
+  A nova oferta vira a padrão do produto se você passar `is_default: true`, **ou** se o produto não tiver nenhuma padrão ativa no momento. Promover uma oferta a padrão rebaixa a anterior.
 </Note>
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="productId" type="string" required>
-  Product to attach the offer to. Not a valid `prod_` ID → `400` (`invalid_product_id`).
+  Produto ao qual anexar a oferta. Se não for um ID `prod_` válido → `400` (`invalid_product_id`).
 </ParamField>
 
-## Body parameters
+## Parâmetros do corpo
 
 <ParamField body="amount_minor" type="integer" required>
-  Price in minor units (centavos). `1`–`99999999999`.
+  Preço em unidades menores (centavos). De `1` a `99999999999`.
 </ParamField>
 
 <ParamField body="currency" type="string" required>
-  Uppercase ISO 4217, e.g. `BRL`.
+  ISO 4217 em maiúsculas, ex. `BRL`.
 </ParamField>
 
 <ParamField body="name" type="string">
-  Offer label, 1–160 characters. Defaults to `"Padrão"`.
+  Rótulo da oferta, de 1 a 160 caracteres. Padrão: `"Padrão"`.
 </ParamField>
 
 <ParamField body="compare_at_amount_minor" type="integer">
-  A struck-through reference price. Must be `≥ amount_minor`.
+  Um preço de referência riscado. Deve ser `≥ amount_minor`.
 </ParamField>
 
 <ParamField body="type" type="string" default="one_time">
-  `one_time` or `recurring`.
+  `one_time` ou `recurring`.
 </ParamField>
 
 <ParamField body="billing_interval" type="string">
-  `day`, `week`, `month`, or `year`. Required when `type` is `recurring`; rejected when `one_time`.
+  `day`, `week`, `month` ou `year`. Obrigatório quando `type` é `recurring`; rejeitado quando `one_time`.
 </ParamField>
 
 <ParamField body="interval_count" type="integer">
-  Number of intervals between charges, `1`–`999`. Recurring only; defaults to `1`.
+  Número de intervalos entre cobranças, de `1` a `999`. Só para recorrente; padrão `1`.
 </ParamField>
 
 <ParamField body="is_default" type="boolean">
-  Set `true` to make this the product's default offer.
+  Passe `true` para tornar esta a oferta padrão do produto.
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl --request POST \
@@ -70,37 +70,37 @@ curl --request POST \
   }'
 ```
 
-## Response
+## Resposta
 
-`201 Created` with the [offer object](#offer-object).
+`201 Created` com o [objeto de oferta](#objeto-de-oferta).
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_product_id` | Path segment isn't a valid `prod_` ID |
-| `400` | `invalid_request` | Validation failed; `param` names the field |
-| `400` | `invalid_compare_at_amount` | `compare_at_amount_minor` is below `amount_minor` |
-| `400` | `billing_interval_required` | `type` is `recurring` with no `billing_interval` |
-| `400` | `invalid_one_time_billing` | A `one_time` offer set `billing_interval` or `interval_count` |
-| `404` | `product_not_found` | No such product, or it is archived |
+| `400` | `invalid_product_id` | O trecho do caminho não é um ID `prod_` válido |
+| `400` | `invalid_request` | Validação falhou; `param` indica o campo |
+| `400` | `invalid_compare_at_amount` | `compare_at_amount_minor` é menor que `amount_minor` |
+| `400` | `billing_interval_required` | `type` é `recurring` sem `billing_interval` |
+| `400` | `invalid_one_time_billing` | Uma oferta `one_time` informou `billing_interval` ou `interval_count` |
+| `404` | `product_not_found` | Não existe esse produto, ou ele está arquivado |
 
-## Offer object
+## Objeto de oferta
 
-<ResponseField name="id" type="string">Offer ID, prefixed `offer_`.</ResponseField>
-<ResponseField name="object" type="string">Always `"offer"`.</ResponseField>
-<ResponseField name="product_id" type="string">The parent product ID.</ResponseField>
-<ResponseField name="name" type="string">Offer label.</ResponseField>
+<ResponseField name="id" type="string">ID da oferta, com prefixo `offer_`.</ResponseField>
+<ResponseField name="object" type="string">Sempre `"offer"`.</ResponseField>
+<ResponseField name="product_id" type="string">ID do produto pai.</ResponseField>
+<ResponseField name="name" type="string">Rótulo da oferta.</ResponseField>
 <ResponseField name="lookup_key" type="string">
-  A stable, system-generated key for the offer.
+  Uma chave estável, gerada pelo sistema, para a oferta.
 </ResponseField>
-<ResponseField name="amount_minor" type="integer">Price in minor units.</ResponseField>
-<ResponseField name="compare_at_amount_minor" type="integer | null">Reference price, or `null`.</ResponseField>
-<ResponseField name="currency" type="string">ISO 4217 currency.</ResponseField>
-<ResponseField name="type" type="string">`one_time` or `recurring`.</ResponseField>
-<ResponseField name="billing_interval" type="string | null">`day` / `week` / `month` / `year`, or `null` for one-time.</ResponseField>
-<ResponseField name="interval_count" type="integer | null">Intervals between charges, or `null` for one-time.</ResponseField>
-<ResponseField name="is_default" type="boolean">Whether this is the product's default offer.</ResponseField>
-<ResponseField name="active" type="boolean">Whether the offer can be used in new checkouts.</ResponseField>
-<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
-<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>
+<ResponseField name="amount_minor" type="integer">Preço em unidades menores.</ResponseField>
+<ResponseField name="compare_at_amount_minor" type="integer | null">Preço de referência, ou `null`.</ResponseField>
+<ResponseField name="currency" type="string">Moeda ISO 4217.</ResponseField>
+<ResponseField name="type" type="string">`one_time` ou `recurring`.</ResponseField>
+<ResponseField name="billing_interval" type="string | null">`day` / `week` / `month` / `year`, ou `null` para avulso.</ResponseField>
+<ResponseField name="interval_count" type="integer | null">Intervalos entre cobranças, ou `null` para avulso.</ResponseField>
+<ResponseField name="is_default" type="boolean">Se esta é a oferta padrão do produto.</ResponseField>
+<ResponseField name="active" type="boolean">Se a oferta pode ser usada em novos checkouts.</ResponseField>
+<ResponseField name="created_at" type="string">Data/hora de criação em ISO 8601.</ResponseField>
+<ResponseField name="updated_at" type="string">Data/hora da última alteração em ISO 8601.</ResponseField>

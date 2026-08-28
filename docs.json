@@ -9,54 +9,59 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "groups": [
+    "languages": [
       {
-        "group": "Introduction",
-        "pages": [
-          "index",
-          "quickstart",
-          "authentication",
-          "api-reference/errors",
-          "api-reference/pagination"
-        ]
-      },
-      {
-        "group": "Account",
-        "pages": [
-          "api-reference/me"
-        ]
-      },
-      {
-        "group": "Customers",
-        "pages": [
-          "api-reference/customers/create",
-          "api-reference/customers/list",
-          "api-reference/customers/retrieve"
-        ]
-      },
-      {
-        "group": "Products",
-        "pages": [
-          "api-reference/products/create",
-          "api-reference/products/list",
-          "api-reference/products/retrieve"
-        ]
-      },
-      {
-        "group": "Offers",
-        "pages": [
-          "api-reference/offers/create",
-          "api-reference/offers/list",
-          "api-reference/offers/retrieve",
-          "api-reference/offers/update"
-        ]
-      },
-      {
-        "group": "Checkouts",
-        "pages": [
-          "api-reference/checkouts/create",
-          "api-reference/checkouts/list",
-          "api-reference/checkouts/retrieve"
+        "language": "pt-BR",
+        "groups": [
+          {
+            "group": "Introdução",
+            "pages": [
+              "index",
+              "quickstart",
+              "authentication",
+              "api-reference/errors",
+              "api-reference/pagination"
+            ]
+          },
+          {
+            "group": "Conta",
+            "pages": [
+              "api-reference/me"
+            ]
+          },
+          {
+            "group": "Clientes",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/list",
+              "api-reference/customers/retrieve"
+            ]
+          },
+          {
+            "group": "Produtos",
+            "pages": [
+              "api-reference/products/create",
+              "api-reference/products/list",
+              "api-reference/products/retrieve"
+            ]
+          },
+          {
+            "group": "Ofertas",
+            "pages": [
+              "api-reference/offers/create",
+              "api-reference/offers/list",
+              "api-reference/offers/retrieve",
+              "api-reference/offers/update"
+            ]
+          },
+          {
+            "group": "Checkouts",
+            "pages": [
+              "api-reference/checkouts/create",
+              "api-reference/checkouts/list",
+              "api-reference/checkouts/retrieve"
+            ]
+          }
         ]
       }
     ]

@@ -1,10 +1,10 @@
 ---
-title: "Errors"
-sidebarTitle: "Errors"
-description: "The MoneyDev API error object, HTTP status codes, error types, and how to use request IDs."
+title: "Erros"
+sidebarTitle: "Erros"
+description: "O objeto de erro da API MoneyDev, códigos de status HTTP, tipos de erro e como usar os IDs de requisição."
 ---
 
-When a `/v1` request fails, MoneyDev returns a `4xx` or `5xx` status and a JSON body with a single `error` object.
+Quando uma requisição `/v1` falha, a MoneyDev retorna um status `4xx` ou `5xx` e um corpo JSON com um único objeto `error`.
 
 ```json
 {
@@ -19,57 +19,57 @@ When a `/v1` request fails, MoneyDev returns a `4xx` or `5xx` status and a JSON 
 ```
 
 <ResponseField name="error.type" type="string">
-  Broad category of the error. See [types](#error-types) below.
+  Categoria geral do erro. Veja os [tipos](#tipos-de-erro) abaixo.
 </ResponseField>
 
 <ResponseField name="error.code" type="string">
-  A stable, specific machine-readable string, e.g. `customer_email_already_exists`. Branch on this.
+  Uma string estável e específica, legível por máquina, ex. `customer_email_already_exists`. Faça o seu tratamento com base nela.
 </ResponseField>
 
 <ResponseField name="error.message" type="string">
-  A human-readable explanation, in Brazilian Portuguese. For end users where helpful, but log it — do not pattern-match on it.
+  Explicação legível, em português. Pode ser mostrada ao usuário final quando fizer sentido, mas registre em log — não faça correspondência de texto por ela.
 </ResponseField>
 
 <ResponseField name="error.param" type="string">
-  Present when the error is tied to one input field. Dotted for nested fields, e.g. `default_offer.amount_minor`.
+  Presente quando o erro está ligado a um campo de entrada. Com ponto para campos aninhados, ex. `default_offer.amount_minor`.
 </ResponseField>
 
 <ResponseField name="error.request_id" type="string">
-  Identifier for this request, also returned as the `X-Request-Id` response header. Quote it when contacting support.
+  Identificador desta requisição, também retornado no header `X-Request-Id`. Informe ao acionar o suporte.
 </ResponseField>
 
 <Note>
-  `POST /oauth/token` does not use this shape. Its failures follow the OAuth spec: `{ "error": "...", "error_description": "..." }`. See [Authentication](/authentication#token-endpoint-errors).
+  `POST /oauth/token` não usa este formato. As falhas dele seguem a spec OAuth: `{ "error": "...", "error_description": "..." }`. Veja [Autenticação](/authentication#erros-do-endpoint-de-token).
 </Note>
 
-## Error types
+## Tipos de erro
 
-| `type` | Status | Meaning |
+| `type` | Status | Significado |
 |---|---|---|
-| `authentication_error` | `401` | Missing, invalid, expired, or revoked access token |
-| `authorization_error` | `403` | The token is valid but lacks the required scope |
-| `invalid_request_error` | `400` | Malformed request — bad JSON, failed validation, an unparseable ID or cursor |
-| `not_found_error` | `404` | The resource does not exist, or is not visible to your account |
-| `conflict_error` | `409` | The request collides with existing state, e.g. a duplicate unique value |
-| `api_error` | `500` | Something failed on our side. Safe to retry with backoff |
+| `authentication_error` | `401` | Token de acesso ausente, inválido, expirado ou revogado |
+| `authorization_error` | `403` | O token é válido mas não tem o escopo exigido |
+| `invalid_request_error` | `400` | Requisição malformada — JSON inválido, validação falhou, um ID ou cursor não interpretável |
+| `not_found_error` | `404` | O recurso não existe ou não é visível para a sua conta |
+| `conflict_error` | `409` | A requisição colide com o estado atual, ex. um valor único duplicado |
+| `api_error` | `500` | Algo falhou do nosso lado. Pode repetir com backoff |
 
-## Common codes
+## Códigos comuns
 
-| `code` | Type | Notes |
+| `code` | Tipo | Observações |
 |---|---|---|
-| `missing_access_token` | `authentication_error` | No `Authorization: Bearer` header |
-| `invalid_access_token` | `authentication_error` | Token rejected |
-| `insufficient_scope` | `authorization_error` | Token missing the endpoint's scope |
-| `invalid_request` | `invalid_request_error` | Schema validation failed; `param` points at the field |
-| `invalid_cursor` | `invalid_request_error` | `starting_after` is not a valid ID for this list |
-| `customer_email_already_exists` | `conflict_error` | A customer with that email already exists for your account |
-| `checkout_external_id_already_exists` | `conflict_error` | `external_id` already used on another checkout |
+| `missing_access_token` | `authentication_error` | Sem header `Authorization: Bearer` |
+| `invalid_access_token` | `authentication_error` | Token recusado |
+| `insufficient_scope` | `authorization_error` | Token sem o escopo do endpoint |
+| `invalid_request` | `invalid_request_error` | Validação de schema falhou; `param` aponta o campo |
+| `invalid_cursor` | `invalid_request_error` | `starting_after` não é um ID válido para esta lista |
+| `customer_email_already_exists` | `conflict_error` | Já existe um cliente com esse e-mail na sua conta |
+| `checkout_external_id_already_exists` | `conflict_error` | `external_id` já usado em outro checkout |
 
-Resource-specific codes (`customer_not_found`, `offer_not_found`, `recurring_checkout_not_supported`, …) are listed on each endpoint page.
+Códigos específicos de recurso (`customer_not_found`, `offer_not_found`, `recurring_checkout_not_supported`, …) estão listados em cada página de endpoint.
 
-## Validation errors
+## Erros de validação
 
-Request bodies are schema-validated before any work happens. A failure returns `400` with `code: "invalid_request"` and `param` set to the offending field path:
+Corpos de requisição passam por validação de schema antes de qualquer processamento. Uma falha retorna `400` com `code: "invalid_request"` e `param` no caminho do campo problemático:
 
 ```json
 {
@@ -83,6 +83,6 @@ Request bodies are schema-validated before any work happens. A failure returns `
 }
 ```
 
-## Retrying
+## Repetição
 
-Retry `500` (`api_error`) and the OAuth `503` (`temporarily_unavailable`) with exponential backoff. Do not blindly retry `4xx` — fix the request first. For safe retries of `POST /v1/checkouts`, set an `external_id`: a repeat with the same value returns `checkout_external_id_already_exists` instead of creating a second session.
+Repita `500` (`api_error`) e o `503` do OAuth (`temporarily_unavailable`) com backoff exponencial. Não repita `4xx` cegamente — corrija a requisição primeiro. Para repetir `POST /v1/checkouts` com segurança, defina um `external_id`: uma repetição com o mesmo valor retorna `checkout_external_id_already_exists` em vez de criar uma segunda sessão.

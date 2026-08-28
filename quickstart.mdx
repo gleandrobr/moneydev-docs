@@ -1,17 +1,17 @@
 ---
-title: "Quickstart"
-sidebarTitle: "Quickstart"
-description: "From credentials to a paid checkout: get a token, create a product and offer, open a checkout, and send the buyer to pay."
+title: "Início rápido"
+sidebarTitle: "Início rápido"
+description: "Da credencial ao checkout pago: obtenha um token, crie um produto e uma oferta, abra um checkout e envie o comprador para pagar."
 ---
 
-This walks the full path: get an access token, model what you sell, open a checkout, and collect a Pix payment on the hosted page.
+Este guia percorre o caminho completo: obter um token de acesso, modelar o que você vende, abrir um checkout e receber um pagamento Pix na página hospedada.
 
 <Tip>
-  Every call goes to `https://api.moneydev.com.br`. Set `MONEYDEV_CLIENT_ID` and `MONEYDEV_CLIENT_SECRET` from your [Dashboard](https://dashboard.moneydev.com.br) API client first.
+  Todas as chamadas vão para `https://api.moneydev.com.br`. Antes, defina `MONEYDEV_CLIENT_ID` e `MONEYDEV_CLIENT_SECRET` a partir do cliente de API criado no [Dashboard](https://dashboard.moneydev.com.br).
 </Tip>
 
 <Steps>
-  <Step title="Get an access token">
+  <Step title="Obtenha um token de acesso">
     ```bash
     curl --request POST https://api.moneydev.com.br/oauth/token \
       --user "$MONEYDEV_CLIENT_ID:$MONEYDEV_CLIENT_SECRET" \
@@ -19,11 +19,11 @@ This walks the full path: get an access token, model what you sell, open a check
       --data grant_type=client_credentials
     ```
 
-    Copy `access_token` from the response into `ACCESS_TOKEN`. It lasts 15 minutes. See [Authentication](/authentication) for details.
+    Copie o `access_token` da resposta para `ACCESS_TOKEN`. Ele dura 15 minutos. Veja [Autenticação](/authentication) para detalhes.
   </Step>
 
-  <Step title="Create a product and its offer">
-    A **product** is what you sell; an **offer** is a price for it. Create both at once. Amounts are in centavos — `49900` is R$ 499,00.
+  <Step title="Crie um produto e sua oferta">
+    Um **produto** é o que você vende; uma **oferta** é um preço dele. Crie os dois de uma vez. Valores são em centavos — `49900` é R$ 499,00.
 
     ```bash
     curl --request POST https://api.moneydev.com.br/v1/products \
@@ -35,11 +35,11 @@ This walks the full path: get an access token, model what you sell, open a check
       }'
     ```
 
-    The response includes `default_offer.id` (an `offer_…`). Keep it for the next step.
+    A resposta inclui `default_offer.id` (um `offer_…`). Guarde-o para o próximo passo.
   </Step>
 
-  <Step title="(Optional) Create a customer">
-    Attach a customer so you don't resend buyer details later.
+  <Step title="(Opcional) Crie um cliente">
+    Vincule um cliente para não reenviar os dados do comprador depois.
 
     ```bash
     curl --request POST https://api.moneydev.com.br/v1/customers \
@@ -49,7 +49,7 @@ This walks the full path: get an access token, model what you sell, open a check
     ```
   </Step>
 
-  <Step title="Open a checkout">
+  <Step title="Abra um checkout">
     ```bash
     curl --request POST https://api.moneydev.com.br/v1/checkouts \
       --header "Authorization: Bearer $ACCESS_TOKEN" \
@@ -61,41 +61,41 @@ This walks the full path: get an access token, model what you sell, open a check
       }'
     ```
 
-    The response has a `checkout_url` on `pay.moneydev.com.br` and `status: "open"`.
+    A resposta traz uma `checkout_url` em `pay.moneydev.com.br` e `status: "open"`.
   </Step>
 
-  <Step title="Send the buyer to pay">
-    Redirect the buyer to `checkout_url`. They pay with Pix on the hosted page and land back on your `success_url`.
+  <Step title="Envie o comprador para pagar">
+    Redirecione o comprador para a `checkout_url`. Ele paga com Pix na página hospedada e volta para a sua `success_url`.
   </Step>
 
-  <Step title="Confirm the payment">
-    Poll the checkout until `status` is `completed`:
+  <Step title="Confirme o pagamento">
+    Consulte o checkout até o `status` ser `completed`:
 
     ```bash
     curl https://api.moneydev.com.br/v1/checkouts/checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c \
       --header "Authorization: Bearer $ACCESS_TOKEN"
     ```
 
-    | `status` | Meaning |
+    | `status` | Significado |
     |---|---|
-    | `open` | Awaiting payment |
-    | `completed` | Paid — fulfil the order |
-    | `expired` | 24 h passed with no payment |
-    | `canceled` | Canceled before payment |
+    | `open` | Aguardando pagamento |
+    | `completed` | Pago — libere o pedido |
+    | `expired` | Passaram 24 h sem pagamento |
+    | `canceled` | Cancelado antes do pagamento |
 
     <Note>
-      A seller-facing webhook for `completed` is planned. For now, poll this endpoint.
+      Um webhook para o seller no evento `completed` está no roadmap. Por enquanto, consulte este endpoint.
     </Note>
   </Step>
 </Steps>
 
-## Next steps
+## Próximos passos
 
 <CardGroup cols={2}>
   <Card title="Checkouts" icon="cart-shopping" href="/api-reference/checkouts/create">
-    Open a checkout and collect payment.
+    Abra um checkout e receba o pagamento.
   </Card>
-  <Card title="Authentication" icon="key" href="/authentication">
-    Scopes, token lifetime, and OAuth errors.
+  <Card title="Autenticação" icon="key" href="/authentication">
+    Escopos, validade do token e erros de OAuth.
   </Card>
 </CardGroup>

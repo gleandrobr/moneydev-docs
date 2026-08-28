@@ -1,33 +1,33 @@
 ---
-title: "List customers"
-sidebarTitle: "List customers"
-description: "List the customers on your account, newest first, with cursor pagination."
+title: "Listar clientes"
+sidebarTitle: "Listar clientes"
+description: "Lista os clientes da sua conta, mais recentes primeiro, com paginação por cursor."
 ---
 
 <Info>
-  `GET /v1/customers` &nbsp;·&nbsp; Requires scope `customers:read`
+  `GET /v1/customers` &nbsp;·&nbsp; Requer o escopo `customers:read`
 </Info>
 
-Returns your customers, newest first, in a [list object](/api-reference/pagination).
+Retorna os seus clientes, mais recentes primeiro, em um [objeto de lista](/api-reference/pagination).
 
-## Query parameters
+## Parâmetros de query
 
 <ParamField query="limit" type="integer" default="20">
-  Records to return, `1`–`100`.
+  Registros a retornar, de `1` a `100`.
 </ParamField>
 
 <ParamField query="starting_after" type="string">
-  A customer ID (`cus_…`) to page after. An unknown or malformed value returns `400` (`invalid_cursor`).
+  Um ID de cliente (`cus_…`) a partir do qual paginar. Um valor desconhecido ou malformado retorna `400` (`invalid_cursor`).
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl "https://api.moneydev.com.br/v1/customers?limit=2" \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
 ```json
 {
@@ -63,4 +63,4 @@ curl "https://api.moneydev.com.br/v1/customers?limit=2" \
 }
 ```
 
-See [Pagination](/api-reference/pagination) for looping through every page.
+Veja [Paginação](/api-reference/pagination) para percorrer todas as páginas.

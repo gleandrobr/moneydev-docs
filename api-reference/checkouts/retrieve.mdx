@@ -1,46 +1,46 @@
 ---
-title: "Retrieve a checkout"
-sidebarTitle: "Retrieve checkout"
-description: "Fetch a checkout session by ID and check its payment status."
+title: "Consultar um checkout"
+sidebarTitle: "Consultar checkout"
+description: "Busca uma sessão de checkout pelo ID e verifica o status do pagamento."
 ---
 
 <Info>
-  `GET /v1/checkouts/{checkoutId}` &nbsp;·&nbsp; Requires scope `checkouts:read`
+  `GET /v1/checkouts/{checkoutId}` &nbsp;·&nbsp; Requer o escopo `checkouts:read`
 </Info>
 
-Fetches one checkout session. Poll this after sending a buyer to `checkout_url` to see when `status` turns `completed`. If the session is `open` and past `expires_at`, this call marks it `expired` before returning.
+Busca uma sessão de checkout. Consulte este endpoint periodicamente depois de enviar o comprador para a `checkout_url` para ver quando o `status` vira `completed`. Se a sessão estiver `open` e já tiver passado do `expires_at`, esta chamada a marca como `expired` antes de retornar.
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="checkoutId" type="string" required>
-  The checkout ID, e.g. `checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c`. Not a valid `checkout_` ID → `400` (`invalid_checkout_id`).
+  O ID do checkout, ex. `checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c`. Se não for um ID `checkout_` válido → `400` (`invalid_checkout_id`).
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl https://api.moneydev.com.br/v1/checkouts/checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
-`200 OK` with the [checkout object](/api-reference/checkouts/create#checkout-object).
+`200 OK` com o [objeto de checkout](/api-reference/checkouts/create#objeto-de-checkout).
 
-| `status` | Meaning |
+| `status` | Significado |
 |---|---|
-| `open` | Awaiting payment |
-| `completed` | Paid — `completed_at` is set |
-| `expired` | Reached `expires_at` without payment |
-| `canceled` | Canceled before payment |
+| `open` | Aguardando pagamento |
+| `completed` | Pago — `completed_at` está preenchido |
+| `expired` | Chegou ao `expires_at` sem pagamento |
+| `canceled` | Cancelado antes do pagamento |
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_checkout_id` | The path segment is not a valid `checkout_` ID |
-| `404` | `checkout_not_found` | No such checkout on your account |
+| `400` | `invalid_checkout_id` | O trecho do caminho não é um ID `checkout_` válido |
+| `404` | `checkout_not_found` | Não existe esse checkout na sua conta |
 
 <Note>
-  A seller-facing webhook for `completed` is on the roadmap. For now, poll this endpoint.
+  Um webhook para o seller no evento `completed` está no roadmap. Por enquanto, consulte este endpoint periodicamente.
 </Note>

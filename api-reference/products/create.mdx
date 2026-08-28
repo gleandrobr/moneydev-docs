@@ -1,58 +1,58 @@
 ---
-title: "Create a product"
-sidebarTitle: "Create product"
-description: "Create a product and its default offer in one call."
+title: "Criar um produto"
+sidebarTitle: "Criar produto"
+description: "Cria um produto e sua oferta padrão em uma única chamada."
 ---
 
 <Info>
-  `POST /v1/products` &nbsp;·&nbsp; Requires scope `products:write`
+  `POST /v1/products` &nbsp;·&nbsp; Requer o escopo `products:write`
 </Info>
 
-A **product** is something you sell. Every product has one or more **offers** — priced ways to buy it. This endpoint creates the product and its first offer together; that offer becomes the default.
+Um **produto** é algo que você vende. Todo produto tem uma ou mais **ofertas** — formas de comprá-lo, cada uma com um preço. Este endpoint cria o produto e a primeira oferta juntos; essa oferta vira a padrão.
 
-## Body parameters
+## Parâmetros do corpo
 
 <ParamField body="name" type="string" required>
-  Product name, 1–160 characters.
+  Nome do produto, de 1 a 160 caracteres.
 </ParamField>
 
 <ParamField body="description" type="string">
-  Up to 2000 characters. Defaults to an empty string.
+  Até 2000 caracteres. Padrão: string vazia.
 </ParamField>
 
 <ParamField body="metadata" type="object">
-  Arbitrary key–value pairs for your own use.
+  Pares chave–valor livres para seu uso.
 </ParamField>
 
 <ParamField body="default_offer" type="object" required>
-  The product's first offer. Same shape as [Create an offer](/api-reference/offers/create#body-parameters), minus `is_default`.
+  A primeira oferta do produto. Mesmo formato de [Criar uma oferta](/api-reference/offers/create), sem `is_default`.
 
-  <Expandable title="default_offer properties" defaultOpen>
+  <Expandable title="propriedades de default_offer" defaultOpen>
     <ParamField body="default_offer.amount_minor" type="integer" required>
-      Price in minor units (centavos). `1`–`99999999999`.
+      Preço em unidades menores (centavos). De `1` a `99999999999`.
     </ParamField>
     <ParamField body="default_offer.currency" type="string" required>
-      Uppercase ISO 4217, e.g. `BRL`.
+      ISO 4217 em maiúsculas, ex. `BRL`.
     </ParamField>
     <ParamField body="default_offer.name" type="string">
-      Offer label, 1–160 characters. Defaults to `"Padrão"`.
+      Rótulo da oferta, de 1 a 160 caracteres. Padrão: `"Padrão"`.
     </ParamField>
     <ParamField body="default_offer.compare_at_amount_minor" type="integer">
-      A struck-through reference price. Must be `≥ amount_minor`.
+      Um preço de referência riscado. Deve ser `≥ amount_minor`.
     </ParamField>
     <ParamField body="default_offer.type" type="string" default="one_time">
-      `one_time` or `recurring`.
+      `one_time` ou `recurring`.
     </ParamField>
     <ParamField body="default_offer.billing_interval" type="string">
-      `day`, `week`, `month`, or `year`. Required when `type` is `recurring`; not allowed when `one_time`.
+      `day`, `week`, `month` ou `year`. Obrigatório quando `type` é `recurring`; não permitido quando `one_time`.
     </ParamField>
     <ParamField body="default_offer.interval_count" type="integer">
-      Intervals between charges, `1`–`999`. Recurring only; defaults to `1`.
+      Intervalos entre cobranças, de `1` a `999`. Só para recorrente; padrão `1`.
     </ParamField>
   </Expandable>
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl --request POST https://api.moneydev.com.br/v1/products \
@@ -69,9 +69,9 @@ curl --request POST https://api.moneydev.com.br/v1/products \
   }'
 ```
 
-## Response
+## Resposta
 
-`201 Created` with the [product object](#product-object). `default_offer` is the [offer](/api-reference/offers/create#offer-object) just created.
+`201 Created` com o [objeto de produto](#objeto-de-produto). `default_offer` é o [objeto de oferta](/api-reference/offers/create#objeto-de-oferta) recém-criado.
 
 ```json
 {
@@ -103,26 +103,26 @@ curl --request POST https://api.moneydev.com.br/v1/products \
 }
 ```
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_request` | Validation failed; `param` names the field |
-| `400` | `invalid_product_name` | `name` is empty after trimming |
-| `400` | `invalid_compare_at_amount` | `default_offer.compare_at_amount_minor` is below `amount_minor` |
-| `400` | `billing_interval_required` | `default_offer.type` is `recurring` with no `billing_interval` |
-| `400` | `invalid_one_time_billing` | A `one_time` offer set `billing_interval` or `interval_count` |
+| `400` | `invalid_request` | Validação falhou; `param` indica o campo |
+| `400` | `invalid_product_name` | `name` ficou vazio após remover espaços |
+| `400` | `invalid_compare_at_amount` | `default_offer.compare_at_amount_minor` é menor que `amount_minor` |
+| `400` | `billing_interval_required` | `default_offer.type` é `recurring` sem `billing_interval` |
+| `400` | `invalid_one_time_billing` | Uma oferta `one_time` informou `billing_interval` ou `interval_count` |
 
-## Product object
+## Objeto de produto
 
-<ResponseField name="id" type="string">Product ID, prefixed `prod_`.</ResponseField>
-<ResponseField name="object" type="string">Always `"product"`.</ResponseField>
-<ResponseField name="name" type="string">Product name.</ResponseField>
-<ResponseField name="description" type="string">Description, or `""`.</ResponseField>
-<ResponseField name="status" type="string">`active` or `archived`.</ResponseField>
-<ResponseField name="metadata" type="object">Your metadata.</ResponseField>
+<ResponseField name="id" type="string">ID do produto, com prefixo `prod_`.</ResponseField>
+<ResponseField name="object" type="string">Sempre `"product"`.</ResponseField>
+<ResponseField name="name" type="string">Nome do produto.</ResponseField>
+<ResponseField name="description" type="string">Descrição, ou `""`.</ResponseField>
+<ResponseField name="status" type="string">`active` ou `archived`.</ResponseField>
+<ResponseField name="metadata" type="object">Seus metadados.</ResponseField>
 <ResponseField name="default_offer" type="object | null">
-  The current default [offer](/api-reference/offers/create#offer-object), or `null` if none is active.
+  A [oferta](/api-reference/offers/create#objeto-de-oferta) padrão atual, ou `null` se nenhuma estiver ativa.
 </ResponseField>
-<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
-<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>
+<ResponseField name="created_at" type="string">Data/hora de criação em ISO 8601.</ResponseField>
+<ResponseField name="updated_at" type="string">Data/hora da última alteração em ISO 8601.</ResponseField>

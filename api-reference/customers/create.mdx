@@ -1,40 +1,40 @@
 ---
-title: "Create a customer"
-sidebarTitle: "Create customer"
-description: "Create a reusable customer record you can attach to checkout sessions."
+title: "Criar um cliente"
+sidebarTitle: "Criar cliente"
+description: "Cria um registro de cliente reutilizável que você pode vincular a sessões de checkout."
 ---
 
 <Info>
-  `POST /v1/customers` &nbsp;·&nbsp; Requires scope `customers:write`
+  `POST /v1/customers` &nbsp;·&nbsp; Requer o escopo `customers:write`
 </Info>
 
-Creates a customer for your account. Attach one to a [checkout](/api-reference/checkouts/create) with `customer_id` so you don't resend buyer details each time.
+Cria um cliente na sua conta. Vincule um a um [checkout](/api-reference/checkouts/create) via `customer_id` para não reenviar os dados do comprador a cada vez.
 
-## Body parameters
+## Parâmetros do corpo
 
 <ParamField body="name" type="string" required>
-  Customer's full name or company name. 1–160 characters.
+  Nome completo do cliente ou razão social. De 1 a 160 caracteres.
 </ParamField>
 
 <ParamField body="email" type="string" required>
-  Valid email address, up to 320 characters. Stored lowercased. Must be unique within your account.
+  E-mail válido, até 320 caracteres. Armazenado em minúsculas. Deve ser único na sua conta.
 </ParamField>
 
 <ParamField body="phone" type="string">
-  Phone number, 1–32 characters. E.164 (`+5511999999999`) recommended.
+  Telefone, de 1 a 32 caracteres. Recomenda-se o formato E.164 (`+5511999999999`).
 </ParamField>
 
 <ParamField body="tax_id" type="string">
-  CPF or CNPJ, 1–32 characters. Sent as-is — digits only or formatted.
+  CPF ou CNPJ, de 1 a 32 caracteres. Enviado como veio — só dígitos ou formatado.
 </ParamField>
 
 <ParamField body="metadata" type="object">
-  Arbitrary key–value pairs for your own use. Returned on every representation of the customer.
+  Pares chave–valor livres para seu uso. Retornados em toda representação do cliente.
 </ParamField>
 
-Unknown fields cause a `400` (`invalid_request`).
+Campos desconhecidos causam `400` (`invalid_request`).
 
-## Request
+## Requisição
 
 ```bash cURL
 curl --request POST https://api.moneydev.com.br/v1/customers \
@@ -49,9 +49,9 @@ curl --request POST https://api.moneydev.com.br/v1/customers \
   }'
 ```
 
-## Response
+## Resposta
 
-`201 Created` with the [customer object](#customer-object).
+`201 Created` com o [objeto de cliente](#objeto-de-cliente).
 
 ```json
 {
@@ -68,23 +68,23 @@ curl --request POST https://api.moneydev.com.br/v1/customers \
 }
 ```
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_request` | Validation failed; `param` names the field |
-| `400` | `invalid_customer_name` | `name` is empty after trimming |
-| `409` | `customer_email_already_exists` | Another customer on your account uses that email |
+| `400` | `invalid_request` | Validação falhou; `param` indica o campo |
+| `400` | `invalid_customer_name` | `name` ficou vazio após remover espaços |
+| `409` | `customer_email_already_exists` | Outro cliente da sua conta usa esse e-mail |
 
-## Customer object
+## Objeto de cliente
 
-<ResponseField name="id" type="string">Customer ID, prefixed `cus_`.</ResponseField>
-<ResponseField name="object" type="string">Always `"customer"`.</ResponseField>
-<ResponseField name="name" type="string">Full or company name.</ResponseField>
-<ResponseField name="email" type="string">Email address, lowercased.</ResponseField>
-<ResponseField name="phone" type="string | null">Phone number, or `null`.</ResponseField>
-<ResponseField name="tax_id" type="string | null">CPF or CNPJ, or `null`.</ResponseField>
-<ResponseField name="status" type="string">`active` or `inactive`. New customers are `active`.</ResponseField>
-<ResponseField name="metadata" type="object">Your metadata. `{}` if none was set.</ResponseField>
-<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
-<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>
+<ResponseField name="id" type="string">ID do cliente, com prefixo `cus_`.</ResponseField>
+<ResponseField name="object" type="string">Sempre `"customer"`.</ResponseField>
+<ResponseField name="name" type="string">Nome completo ou razão social.</ResponseField>
+<ResponseField name="email" type="string">E-mail, em minúsculas.</ResponseField>
+<ResponseField name="phone" type="string | null">Telefone, ou `null`.</ResponseField>
+<ResponseField name="tax_id" type="string | null">CPF ou CNPJ, ou `null`.</ResponseField>
+<ResponseField name="status" type="string">`active` ou `inactive`. Novos clientes nascem `active`.</ResponseField>
+<ResponseField name="metadata" type="object">Seus metadados. `{}` se nada foi definido.</ResponseField>
+<ResponseField name="created_at" type="string">Data/hora de criação em ISO 8601.</ResponseField>
+<ResponseField name="updated_at" type="string">Data/hora da última alteração em ISO 8601.</ResponseField>

@@ -1,54 +1,54 @@
 ---
-title: "Get current account"
-sidebarTitle: "Get account"
-description: "Retrieve the seller account and API client bound to the current access token."
+title: "Consultar conta"
+sidebarTitle: "Consultar conta"
+description: "Retorna a conta do seller e o cliente de API vinculados ao token de acesso atual."
 ---
 
 <Info>
-  `GET /v1/me` &nbsp;·&nbsp; Requires any valid access token — no specific scope.
+  `GET /v1/me` &nbsp;·&nbsp; Requer qualquer token de acesso válido — sem escopo específico.
 </Info>
 
-Returns the seller account the token acts on and the API client it was issued to. Useful as a connectivity and credentials check.
+Retorna a conta do seller sobre a qual o token atua e o cliente de API para o qual ele foi emitido. Útil como teste de conectividade e de credenciais.
 
-## Request
+## Requisição
 
 ```bash cURL
 curl https://api.moneydev.com.br/v1/me \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
 <ResponseField name="seller" type="object">
-  <Expandable title="properties" defaultOpen>
+  <Expandable title="propriedades" defaultOpen>
     <ResponseField name="seller.id" type="string">
-      Seller ID, prefixed `seller_`.
+      ID do seller, com prefixo `seller_`.
     </ResponseField>
     <ResponseField name="seller.name" type="string">
-      Display name of the seller account.
+      Nome de exibição da conta do seller.
     </ResponseField>
     <ResponseField name="seller.status" type="string">
-      Always `active` — tokens are only issued for active sellers.
+      Sempre `active` — tokens só são emitidos para sellers ativos.
     </ResponseField>
     <ResponseField name="seller.default_currency" type="string">
-      ISO 4217 currency the account settles in, e.g. `BRL`.
+      Moeda ISO 4217 em que a conta liquida, ex. `BRL`.
     </ResponseField>
   </Expandable>
 </ResponseField>
 
 <ResponseField name="api_client" type="object">
-  <Expandable title="properties" defaultOpen>
+  <Expandable title="propriedades" defaultOpen>
     <ResponseField name="api_client.id" type="string">
-      API client ID, prefixed `client_`.
+      ID do cliente de API, com prefixo `client_`.
     </ResponseField>
     <ResponseField name="api_client.name" type="string">
-      Label given to the client in the Dashboard.
+      Rótulo dado ao cliente no Dashboard.
     </ResponseField>
     <ResponseField name="api_client.client_id" type="string">
-      The OAuth `client_id` used to obtain the token.
+      O `client_id` OAuth usado para obter o token.
     </ResponseField>
     <ResponseField name="api_client.scopes" type="string[]">
-      Scopes carried by the current access token.
+      Escopos carregados pelo token de acesso atual.
     </ResponseField>
   </Expandable>
 </ResponseField>

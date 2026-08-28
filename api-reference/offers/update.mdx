@@ -1,38 +1,38 @@
 ---
-title: "Update an offer"
-sidebarTitle: "Update offer"
-description: "Rename an offer, activate or deactivate it, or make it the product's default."
+title: "Atualizar uma oferta"
+sidebarTitle: "Atualizar oferta"
+description: "Renomeia uma oferta, ativa ou desativa, ou a torna a padrão do produto."
 ---
 
 <Info>
-  `PATCH /v1/offers/{offerId}` &nbsp;·&nbsp; Requires scope `products:write`
+  `PATCH /v1/offers/{offerId}` &nbsp;·&nbsp; Requer o escopo `products:write`
 </Info>
 
-Updates mutable fields on an offer. Price, currency, and billing terms are immutable — create a new offer for a different price.
+Atualiza campos mutáveis de uma oferta. Preço, moeda e condições de cobrança são imutáveis — crie uma nova oferta para um preço diferente.
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="offerId" type="string" required>
-  The offer ID. Not a valid `offer_` ID → `400` (`invalid_offer_id`).
+  O ID da oferta. Se não for um ID `offer_` válido → `400` (`invalid_offer_id`).
 </ParamField>
 
-## Body parameters
+## Parâmetros do corpo
 
-Send at least one field.
+Envie ao menos um campo.
 
 <ParamField body="name" type="string">
-  New label, 1–160 characters. Empty after trimming → `400` (`invalid_offer_name`).
+  Novo rótulo, de 1 a 160 caracteres. Vazio após remover espaços → `400` (`invalid_offer_name`).
 </ParamField>
 
 <ParamField body="active" type="boolean">
-  Enable or disable the offer for new checkouts.
+  Habilita ou desabilita a oferta para novos checkouts.
 </ParamField>
 
 <ParamField body="is_default" type="boolean">
-  `true` promotes this offer to the product's default and demotes the previous one.
+  `true` promove esta oferta a padrão do produto e rebaixa a anterior.
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl --request PATCH \
@@ -42,16 +42,16 @@ curl --request PATCH \
   --data '{ "name": "Mensal (promo)", "is_default": true }'
 ```
 
-## Response
+## Resposta
 
-`200 OK` with the updated [offer object](/api-reference/offers/create#offer-object).
+`200 OK` com o [objeto de oferta](/api-reference/offers/create#objeto-de-oferta) atualizado.
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_offer_id` | Path segment isn't a valid `offer_` ID |
-| `400` | `invalid_offer_name` | `name` was sent but is empty |
-| `404` | `offer_not_found` | No such offer, or it is archived |
-| `409` | `default_offer_cannot_be_disabled` | Tried to set `active: false` or `is_default: false` on the current default — promote another offer first |
-| `409` | `inactive_offer_cannot_be_default` | Tried to make an inactive offer the default without also sending `active: true` |
+| `400` | `invalid_offer_id` | O trecho do caminho não é um ID `offer_` válido |
+| `400` | `invalid_offer_name` | `name` foi enviado mas está vazio |
+| `404` | `offer_not_found` | Não existe essa oferta, ou ela está arquivada |
+| `409` | `default_offer_cannot_be_disabled` | Tentou `active: false` ou `is_default: false` na oferta padrão atual — promova outra oferta primeiro |
+| `409` | `inactive_offer_cannot_be_default` | Tentou tornar padrão uma oferta inativa sem também enviar `active: true` |

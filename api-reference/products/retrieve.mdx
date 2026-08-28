@@ -1,37 +1,37 @@
 ---
-title: "Retrieve a product"
-sidebarTitle: "Retrieve product"
-description: "Fetch a single product by ID, with its default offer."
+title: "Consultar um produto"
+sidebarTitle: "Consultar produto"
+description: "Busca um único produto pelo ID, com sua oferta padrão."
 ---
 
 <Info>
-  `GET /v1/products/{productId}` &nbsp;·&nbsp; Requires scope `products:read`
+  `GET /v1/products/{productId}` &nbsp;·&nbsp; Requer o escopo `products:read`
 </Info>
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="productId" type="string" required>
-  The product ID, e.g. `prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a`. Not a valid `prod_` ID → `400` (`invalid_product_id`).
+  O ID do produto, ex. `prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a`. Se não for um ID `prod_` válido → `400` (`invalid_product_id`).
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl https://api.moneydev.com.br/v1/products/prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
-`200 OK` with the [product object](/api-reference/products/create#product-object), including its current `default_offer` (or `null`).
+`200 OK` com o [objeto de produto](/api-reference/products/create#objeto-de-produto), incluindo a `default_offer` atual (ou `null`).
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_product_id` | The path segment is not a valid `prod_` ID |
-| `404` | `product_not_found` | No such product on your account |
+| `400` | `invalid_product_id` | O trecho do caminho não é um ID `prod_` válido |
+| `404` | `product_not_found` | Não existe esse produto na sua conta |
 
 <Tip>
-  To list every price for a product, use [List offers](/api-reference/offers/list).
+  Para listar todos os preços de um produto, use [Listar ofertas](/api-reference/offers/list).
 </Tip>

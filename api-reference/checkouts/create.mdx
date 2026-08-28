@@ -1,46 +1,46 @@
 ---
-title: "Create a checkout"
-sidebarTitle: "Create checkout"
-description: "Open a hosted checkout session for an offer and get the URL to send the buyer to."
+title: "Criar um checkout"
+sidebarTitle: "Criar checkout"
+description: "Abre uma sessão de checkout hospedada para uma oferta e obtém a URL para onde enviar o comprador."
 ---
 
 <Info>
-  `POST /v1/checkouts` &nbsp;·&nbsp; Requires scope `checkouts:write`
+  `POST /v1/checkouts` &nbsp;·&nbsp; Requer o escopo `checkouts:write`
 </Info>
 
-Opens a checkout session for one offer. The response carries a `checkout_url` — the hosted page where the buyer pays with Pix. When they finish, the session's `status` becomes `completed`.
+Abre uma sessão de checkout para uma oferta. A resposta traz uma `checkout_url` — a página hospedada onde o comprador paga com Pix. Quando ele conclui, o `status` da sessão vira `completed`.
 
 <Note>
-  Recurring offers are not supported in checkout yet — a `recurring` offer returns `400` (`recurring_checkout_not_supported`). Sessions expire 24 hours after creation.
+  Ofertas recorrentes ainda não são suportadas no checkout — uma oferta `recurring` retorna `400` (`recurring_checkout_not_supported`). As sessões expiram 24 horas após a criação.
 </Note>
 
-## Body parameters
+## Parâmetros do corpo
 
 <ParamField body="offer_id" type="string" required>
-  The offer to sell. Must be an active offer on an active product.
+  A oferta a vender. Deve ser uma oferta ativa de um produto ativo.
 </ParamField>
 
 <ParamField body="customer_id" type="string">
-  An existing customer (`cus_…`) to attach. Must be active.
+  Um cliente existente (`cus_…`) a vincular. Deve estar ativo.
 </ParamField>
 
 <ParamField body="external_id" type="string">
-  Your own reference for this checkout, 1–255 characters. Unique per account — reuse it to make `POST /v1/checkouts` safe to retry (a repeat returns `409` rather than a second session).
+  Sua referência para este checkout, de 1 a 255 caracteres. Único por conta — reutilize para tornar `POST /v1/checkouts` seguro de repetir (uma repetição retorna `409` em vez de uma segunda sessão).
 </ParamField>
 
 <ParamField body="success_url" type="string">
-  Where the hosted page sends the buyer after payment. `http`/`https`, up to 2048 characters.
+  Para onde a página hospedada envia o comprador após o pagamento. `http`/`https`, até 2048 caracteres.
 </ParamField>
 
 <ParamField body="cancel_url" type="string">
-  Where the buyer goes if they abandon the checkout.
+  Para onde o comprador vai se abandonar o checkout.
 </ParamField>
 
 <ParamField body="metadata" type="object">
-  Arbitrary key–value pairs, echoed back on the checkout object.
+  Pares chave–valor livres, devolvidos no objeto de checkout.
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl --request POST https://api.moneydev.com.br/v1/checkouts \
@@ -55,9 +55,9 @@ curl --request POST https://api.moneydev.com.br/v1/checkouts \
   }'
 ```
 
-## Response
+## Resposta
 
-`201 Created` with the [checkout object](#checkout-object). Redirect the buyer to `checkout_url`.
+`201 Created` com o [objeto de checkout](#objeto-de-checkout). Redirecione o comprador para a `checkout_url`.
 
 ```json
 {
@@ -99,39 +99,39 @@ curl --request POST https://api.moneydev.com.br/v1/checkouts \
 }
 ```
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_offer_id` | `offer_id` isn't a valid `offer_` ID |
-| `400` | `invalid_customer_id` | `customer_id` isn't a valid `cus_` ID |
-| `400` | `invalid_external_id` | `external_id` was sent empty |
-| `400` | `invalid_success_url` / `invalid_cancel_url` | URL isn't `http`/`https` |
-| `400` | `recurring_checkout_not_supported` | The offer is `recurring` |
-| `404` | `offer_not_found` | Offer missing, inactive, archived, or its product isn't active |
-| `404` | `customer_not_found` | `customer_id` given but no active customer matches |
-| `409` | `checkout_external_id_already_exists` | `external_id` already used on another checkout |
+| `400` | `invalid_offer_id` | `offer_id` não é um ID `offer_` válido |
+| `400` | `invalid_customer_id` | `customer_id` não é um ID `cus_` válido |
+| `400` | `invalid_external_id` | `external_id` foi enviado vazio |
+| `400` | `invalid_success_url` / `invalid_cancel_url` | A URL não é `http`/`https` |
+| `400` | `recurring_checkout_not_supported` | A oferta é `recurring` |
+| `404` | `offer_not_found` | Oferta ausente, inativa, arquivada, ou o produto dela não está ativo |
+| `404` | `customer_not_found` | `customer_id` informado mas nenhum cliente ativo corresponde |
+| `409` | `checkout_external_id_already_exists` | `external_id` já usado em outro checkout |
 
-## Checkout object
+## Objeto de checkout
 
-<ResponseField name="id" type="string">Checkout ID, prefixed `checkout_`.</ResponseField>
-<ResponseField name="object" type="string">Always `"checkout"`.</ResponseField>
-<ResponseField name="customer_id" type="string | null">Attached customer, or `null`.</ResponseField>
-<ResponseField name="external_id" type="string | null">Your reference, or `null`.</ResponseField>
+<ResponseField name="id" type="string">ID do checkout, com prefixo `checkout_`.</ResponseField>
+<ResponseField name="object" type="string">Sempre `"checkout"`.</ResponseField>
+<ResponseField name="customer_id" type="string | null">Cliente vinculado, ou `null`.</ResponseField>
+<ResponseField name="external_id" type="string | null">Sua referência, ou `null`.</ResponseField>
 <ResponseField name="mode" type="string">`payment`.</ResponseField>
 <ResponseField name="status" type="string">
-  `open`, `completed`, `expired`, or `canceled`. Reads auto-expire an `open` session past `expires_at`.
+  `open`, `completed`, `expired` ou `canceled`. Leituras expiram automaticamente uma sessão `open` que passou de `expires_at`.
 </ResponseField>
-<ResponseField name="currency" type="string">ISO 4217 currency.</ResponseField>
-<ResponseField name="amount_total_minor" type="integer">Total in minor units.</ResponseField>
-<ResponseField name="checkout_url" type="string">Hosted page URL for the buyer.</ResponseField>
-<ResponseField name="success_url" type="string | null">Post-payment redirect, or `null`.</ResponseField>
-<ResponseField name="cancel_url" type="string | null">Abandon redirect, or `null`.</ResponseField>
-<ResponseField name="metadata" type="object">Your metadata.</ResponseField>
+<ResponseField name="currency" type="string">Moeda ISO 4217.</ResponseField>
+<ResponseField name="amount_total_minor" type="integer">Total em unidades menores.</ResponseField>
+<ResponseField name="checkout_url" type="string">URL da página hospedada para o comprador.</ResponseField>
+<ResponseField name="success_url" type="string | null">Redirecionamento pós-pagamento, ou `null`.</ResponseField>
+<ResponseField name="cancel_url" type="string | null">Redirecionamento de abandono, ou `null`.</ResponseField>
+<ResponseField name="metadata" type="object">Seus metadados.</ResponseField>
 <ResponseField name="line_items" type="array">
-  The items being sold. Each has `id` (`item_…`), `product_id`, `offer_id`, `name`, `description`, `offer_name`, `quantity`, `currency`, `unit_amount_minor`, `total_amount_minor`, `type`, `billing_interval`, `interval_count`, and `metadata`.
+  Os itens vendidos. Cada um tem `id` (`item_…`), `product_id`, `offer_id`, `name`, `description`, `offer_name`, `quantity`, `currency`, `unit_amount_minor`, `total_amount_minor`, `type`, `billing_interval`, `interval_count` e `metadata`.
 </ResponseField>
-<ResponseField name="expires_at" type="string">ISO 8601 expiry (24 h after creation).</ResponseField>
-<ResponseField name="completed_at" type="string | null">ISO 8601 completion time, or `null`.</ResponseField>
-<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
-<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>
+<ResponseField name="expires_at" type="string">Expiração em ISO 8601 (24 h após a criação).</ResponseField>
+<ResponseField name="completed_at" type="string | null">Data/hora de conclusão em ISO 8601, ou `null`.</ResponseField>
+<ResponseField name="created_at" type="string">Data/hora de criação em ISO 8601.</ResponseField>
+<ResponseField name="updated_at" type="string">Data/hora da última alteração em ISO 8601.</ResponseField>

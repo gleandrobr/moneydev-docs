@@ -1,27 +1,27 @@
 ---
-title: "Authentication"
-sidebarTitle: "Authentication"
-description: "Exchange OAuth 2.0 client credentials for a Bearer access token and call the MoneyDev API."
+title: "Autenticação"
+sidebarTitle: "Autenticação"
+description: "Troque credenciais de cliente OAuth 2.0 por um token de acesso Bearer e chame a API MoneyDev."
 ---
 
-MoneyDev uses the OAuth 2.0 **client credentials** grant ([RFC 6749](https://www.rfc-editor.org/rfc/rfc6749#section-4.4)). You exchange a client ID and secret for a short-lived access token, then send that token as a `Bearer` credential on every `/v1` request.
+A MoneyDev usa o fluxo OAuth 2.0 **client credentials** ([RFC 6749](https://www.rfc-editor.org/rfc/rfc6749#section-4.4)). Você troca um client ID e um secret por um token de acesso de curta duração e envia esse token como credencial `Bearer` em toda requisição `/v1`.
 
 <Warning>
-  Your client secret is a server-side credential with full access to your account. Never ship it in browser or mobile code. Store it in an environment variable and rotate it from the [Dashboard](https://dashboard.moneydev.com.br) if it leaks.
+  Seu client secret é uma credencial de servidor com acesso total à sua conta. Nunca coloque em código de navegador ou app mobile. Guarde em variável de ambiente e faça a rotação pelo [Dashboard](https://dashboard.moneydev.com.br) se ele vazar.
 </Warning>
 
-## Get your credentials
+## Obtenha suas credenciais
 
-Create an API client in the [Dashboard](https://dashboard.moneydev.com.br) under **API Keys**. You receive:
+Crie um cliente de API no [Dashboard](https://dashboard.moneydev.com.br), em **API Keys**. Você recebe:
 
-- **`client_id`** — an identifier, safe to log.
-- **`client_secret`** — shown once at creation. Store it securely.
+- **`client_id`** — um identificador, seguro para registrar em log.
+- **`client_secret`** — exibido uma única vez na criação. Guarde com segurança.
 
-Each client is granted a set of [scopes](#scopes).
+Cada cliente recebe um conjunto de [escopos](#escopos).
 
-## Request an access token
+## Solicite um token de acesso
 
-`POST` to the token endpoint with your credentials in an HTTP Basic header and a form-encoded body.
+Faça um `POST` no endpoint de token com as credenciais em um header HTTP Basic e o corpo em formato `form-urlencoded`.
 
 ```bash cURL
 curl --request POST \
@@ -48,17 +48,17 @@ const res = await fetch("https://api.moneydev.com.br/oauth/token", {
 const { access_token, expires_in } = await res.json();
 ```
 
-### Parameters
+### Parâmetros
 
 <ParamField body="grant_type" type="string" required>
-  Must be `client_credentials`. It is the only supported grant.
+  Deve ser `client_credentials`. É o único fluxo suportado.
 </ParamField>
 
 <ParamField body="scope" type="string">
-  Space-separated list of scopes to request. Omit it to receive every scope granted to your client. Requesting a scope your client does not have returns `invalid_scope`.
+  Lista de escopos separados por espaço. Omita para receber todos os escopos concedidos ao seu cliente. Pedir um escopo que o cliente não tem retorna `invalid_scope`.
 </ParamField>
 
-### Response
+### Resposta
 
 ```json
 {
@@ -69,52 +69,52 @@ const { access_token, expires_in } = await res.json();
 }
 ```
 
-The token is a signed JWT valid for **`expires_in` seconds** (900 = 15 minutes). Cache it and reuse it until it is close to expiry, then request a new one — there is no refresh token. The token endpoint sends `Cache-Control: no-store`.
+O token é um JWT assinado, válido por **`expires_in` segundos** (900 = 15 minutos). Guarde em cache e reutilize até perto de expirar; então solicite um novo — não há refresh token. O endpoint de token responde com `Cache-Control: no-store`.
 
-## Call the API
+## Chame a API
 
-Send the token as a `Bearer` credential:
+Envie o token como credencial `Bearer`:
 
 ```bash
 curl https://api.moneydev.com.br/v1/me \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-| Situation | Status | `error.code` |
+| Situação | Status | `error.code` |
 |---|---|---|
-| No `Authorization: Bearer` header | `401` | `missing_access_token` |
-| Token invalid, expired, or revoked | `401` | `invalid_access_token` |
-| Token lacks the scope the endpoint needs | `403` | `insufficient_scope` |
+| Sem header `Authorization: Bearer` | `401` | `missing_access_token` |
+| Token inválido, expirado ou revogado | `401` | `invalid_access_token` |
+| Token sem o escopo que o endpoint exige | `403` | `insufficient_scope` |
 
-## Scopes
+## Escopos
 
-| Scope | Grants |
+| Escopo | Permite |
 |---|---|
-| `customers:read` | Read customers |
-| `customers:write` | Create customers |
-| `products:read` | Read products and offers |
-| `products:write` | Create and update products and offers |
-| `checkouts:read` | Read checkout sessions |
-| `checkouts:write` | Create checkout sessions |
-| `all` | Every scope above |
+| `customers:read` | Ler clientes |
+| `customers:write` | Criar clientes |
+| `products:read` | Ler produtos e ofertas |
+| `products:write` | Criar e atualizar produtos e ofertas |
+| `checkouts:read` | Ler sessões de checkout |
+| `checkouts:write` | Criar sessões de checkout |
+| `all` | Todos os escopos acima |
 
-Each endpoint page lists the scope it requires. Offers are covered by the `products:*` scopes.
+Cada página de endpoint indica o escopo que ela exige. Ofertas são cobertas pelos escopos `products:*`.
 
-## Token endpoint errors
+## Erros do endpoint de token
 
-Errors from `/oauth/token` follow the OAuth spec shape — `{ "error": "...", "error_description": "..." }` — not the standard [API error object](/api-reference/errors).
+Os erros de `/oauth/token` seguem o formato da spec OAuth — `{ "error": "...", "error_description": "..." }` — e não o [objeto de erro padrão da API](/api-reference/errors).
 
-| `error` | Status | Cause |
+| `error` | Status | Causa |
 |---|---|---|
-| `invalid_request` | `400` | Body was not `application/x-www-form-urlencoded` |
-| `unsupported_grant_type` | `400` | `grant_type` was not `client_credentials` |
-| `invalid_client` | `401` | Missing or wrong client credentials |
-| `invalid_scope` | `400` | Requested a scope the client does not have |
-| `temporarily_unavailable` | `503` | The authorization server could not issue a token |
+| `invalid_request` | `400` | O corpo não era `application/x-www-form-urlencoded` |
+| `unsupported_grant_type` | `400` | `grant_type` não era `client_credentials` |
+| `invalid_client` | `401` | Credenciais de cliente ausentes ou incorretas |
+| `invalid_scope` | `400` | Pediu um escopo que o cliente não tem |
+| `temporarily_unavailable` | `503` | O servidor de autorização não conseguiu emitir o token |
 
 ## Discovery
 
-Standard metadata endpoints let OAuth tooling configure itself:
+Endpoints de metadados padrão permitem que ferramentas OAuth se configurem sozinhas:
 
-- `GET /.well-known/oauth-authorization-server` — issuer, token endpoint, supported grants and scopes.
-- `GET /.well-known/jwks.json` — the public keys access tokens are signed with (`RS256`).
+- `GET /.well-known/oauth-authorization-server` — issuer, endpoint de token, fluxos e escopos suportados.
+- `GET /.well-known/jwks.json` — as chaves públicas que assinam os tokens de acesso (`RS256`).

@@ -1,91 +1,91 @@
 ---
-title: "MoneyDev API"
-sidebarTitle: "Overview"
-description: "A REST API for Brazil: register customers, model what you sell as products and offers, and collect Pix payments through a hosted checkout."
+title: "API MoneyDev"
+sidebarTitle: "Visão geral"
+description: "Uma API REST para o Brasil: cadastre clientes, modele o que você vende como produtos e ofertas e receba pagamentos Pix por um checkout hospedado."
 ---
 
-MoneyDev is a payments gateway for Brazil. Its REST API lets you register customers, model what you sell as **products** and **offers**, and open hosted **checkout** sessions where buyers pay with Pix. It speaks JSON over HTTPS and authenticates with OAuth 2.0 access tokens.
+A MoneyDev é um gateway de pagamentos para o Brasil. A API REST permite cadastrar clientes, modelar o que você vende como **produtos** e **ofertas** e abrir sessões de **checkout** hospedadas onde o comprador paga com Pix. A comunicação é em JSON sobre HTTPS, com autenticação por tokens de acesso OAuth 2.0.
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Token to paid checkout in a handful of `curl` calls.
+  <Card title="Início rápido" icon="rocket" href="/quickstart">
+    Do token ao checkout pago em alguns comandos `curl`.
   </Card>
-  <Card title="Authentication" icon="key" href="/authentication">
-    OAuth 2.0 client credentials, scopes, and token lifetime.
+  <Card title="Autenticação" icon="key" href="/authentication">
+    Credenciais de cliente OAuth 2.0, escopos e validade do token.
   </Card>
-  <Card title="Errors" icon="triangle-exclamation" href="/api-reference/errors">
-    The error object, status codes, and request IDs.
+  <Card title="Erros" icon="triangle-exclamation" href="/api-reference/errors">
+    O objeto de erro, códigos de status e IDs de requisição.
   </Card>
   <Card title="Checkouts" icon="cart-shopping" href="/api-reference/checkouts/create">
-    Open a checkout and collect payment.
+    Abra um checkout e receba o pagamento.
   </Card>
 </CardGroup>
 
-## Base URL
+## URL base
 
 ```text
 https://api.moneydev.com.br
 ```
 
-Authentication and service endpoints live at the root; every business resource lives under the `/v1` prefix.
+Os endpoints de autenticação e de serviço ficam na raiz; todo recurso de negócio fica sob o prefixo `/v1`.
 
-| Path | Purpose |
+| Caminho | Função |
 |---|---|
-| `POST /oauth/token` | Exchange client credentials for an access token |
-| `GET /.well-known/oauth-authorization-server` | OAuth authorization server metadata |
-| `GET /.well-known/jwks.json` | Public keys used to sign access tokens |
-| `GET /health` | Service health probe (no auth) |
-| `/v1/*` | Customers, products, offers, and checkouts |
+| `POST /oauth/token` | Troca as credenciais de cliente por um token de acesso |
+| `GET /.well-known/oauth-authorization-server` | Metadados do servidor de autorização OAuth |
+| `GET /.well-known/jwks.json` | Chaves públicas que assinam os tokens de acesso |
+| `GET /health` | Verificação de saúde do serviço (sem autenticação) |
+| `/v1/*` | Clientes, produtos, ofertas e checkouts |
 
-## Requests and responses
+## Requisições e respostas
 
-The API is REST over HTTPS with JSON bodies. Send `Content-Type: application/json` on `POST` and `PATCH` — the one exception is `POST /oauth/token`, which takes `application/x-www-form-urlencoded` (see [Authentication](/authentication)). Unknown body fields are rejected with a `400` rather than ignored.
+A API é REST sobre HTTPS com corpos em JSON. Envie `Content-Type: application/json` em requisições `POST` e `PATCH` — a única exceção é `POST /oauth/token`, que usa `application/x-www-form-urlencoded` (veja [Autenticação](/authentication)). Campos desconhecidos no corpo são rejeitados com `400`, não ignorados.
 
-| Verb | Use |
+| Verbo | Uso |
 |---|---|
-| `GET` | Retrieve a resource or list resources |
-| `POST` | Create a resource |
-| `PATCH` | Update a resource |
+| `GET` | Consultar um recurso ou listar recursos |
+| `POST` | Criar um recurso |
+| `PATCH` | Atualizar um recurso |
 
-Success responses use `2xx` (creates return `201`, everything else `200`); failures return a `4xx`/`5xx` with a structured [error object](/api-reference/errors). Single resources carry an `object` field naming their type; collections return a [list object](/api-reference/pagination).
+Respostas de sucesso usam `2xx` (criações retornam `201`, o resto `200`); falhas retornam `4xx`/`5xx` com um [objeto de erro](/api-reference/errors) estruturado. Recursos individuais têm um campo `object` com o tipo; coleções retornam um [objeto de lista](/api-reference/pagination).
 
-**Versioning** — the current version is `v1`, in the URL path. Additive changes ship within `v1` without notice, so parse responses tolerantly.
+**Versionamento** — a versão atual é `v1`, no caminho da URL. Mudanças aditivas entram na `v1` sem aviso, então trate as respostas de forma tolerante.
 
-## Resource IDs
+## IDs de recurso
 
-IDs are strings with a type prefix and a UUID, e.g. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`.
+IDs são strings com um prefixo de tipo e um UUID, ex. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`.
 
-| Prefix | Object |
+| Prefixo | Objeto |
 |---|---|
-| `cus_` | Customer |
-| `prod_` | Product |
-| `offer_` | Offer |
-| `checkout_` | Checkout session |
-| `item_` | Checkout line item |
-| `seller_` | Seller (your account) |
-| `client_` | API client |
+| `cus_` | Cliente |
+| `prod_` | Produto |
+| `offer_` | Oferta |
+| `checkout_` | Sessão de checkout |
+| `item_` | Item de checkout |
+| `seller_` | Seller (sua conta) |
+| `client_` | Cliente de API |
 
-## Money
+## Valores monetários
 
-Amounts are integers in the currency's **minor unit** (centavos for BRL). `R$ 49,90` is `4990`. Currency codes are uppercase ISO 4217 — MoneyDev settles in `BRL`.
+Valores são inteiros na **unidade menor** da moeda (centavos para BRL). `R$ 49,90` é `4990`. Códigos de moeda seguem o ISO 4217 em maiúsculas — a MoneyDev liquida em `BRL`.
 
-## Request IDs
+## IDs de requisição
 
-Every response includes an `X-Request-Id` header, and error bodies repeat it as `error.request_id`. Include it when contacting [support](mailto:support@moneydev.com.br).
+Toda resposta traz o header `X-Request-Id`, e os corpos de erro repetem esse valor em `error.request_id`. Informe-o ao acionar o [suporte](mailto:support@moneydev.com.br).
 
-## A typical integration
+## Uma integração típica
 
 <Steps>
-  <Step title="Get an access token">
-    Exchange your client credentials at `POST /oauth/token`. See [Authentication](/authentication).
+  <Step title="Obtenha um token de acesso">
+    Troque suas credenciais de cliente em `POST /oauth/token`. Veja [Autenticação](/authentication).
   </Step>
-  <Step title="Create a product and its offer">
-    A [product](/api-reference/products/create) is what you sell; an [offer](/api-reference/offers/create) is a specific price for it.
+  <Step title="Crie um produto e sua oferta">
+    Um [produto](/api-reference/products/create) é o que você vende; uma [oferta](/api-reference/offers/create) é um preço específico dele.
   </Step>
-  <Step title="Open a checkout">
-    [Create a checkout](/api-reference/checkouts/create) for an offer. The response includes a `checkout_url`.
+  <Step title="Abra um checkout">
+    [Crie um checkout](/api-reference/checkouts/create) para uma oferta. A resposta inclui uma `checkout_url`.
   </Step>
-  <Step title="Send the buyer to pay">
-    Redirect them to `checkout_url`, the hosted page where they pay with Pix. Poll [the checkout](/api-reference/checkouts/retrieve) until `status` is `completed`.
+  <Step title="Envie o comprador para pagar">
+    Redirecione-o para a `checkout_url`, a página hospedada onde ele paga com Pix. Consulte [o checkout](/api-reference/checkouts/retrieve) periodicamente até o `status` ser `completed`.
   </Step>
 </Steps>

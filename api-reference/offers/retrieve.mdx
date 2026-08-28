@@ -1,35 +1,35 @@
 ---
-title: "Retrieve an offer"
-sidebarTitle: "Retrieve offer"
-description: "Fetch a single offer by ID."
+title: "Consultar uma oferta"
+sidebarTitle: "Consultar oferta"
+description: "Busca uma única oferta pelo ID."
 ---
 
 <Info>
-  `GET /v1/offers/{offerId}` &nbsp;·&nbsp; Requires scope `products:read`
+  `GET /v1/offers/{offerId}` &nbsp;·&nbsp; Requer o escopo `products:read`
 </Info>
 
-Fetches an offer directly by ID — no product ID needed.
+Busca uma oferta diretamente pelo ID — sem precisar do ID do produto.
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="offerId" type="string" required>
-  The offer ID, e.g. `offer_b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e`. Not a valid `offer_` ID → `400` (`invalid_offer_id`).
+  O ID da oferta, ex. `offer_b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e`. Se não for um ID `offer_` válido → `400` (`invalid_offer_id`).
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl https://api.moneydev.com.br/v1/offers/offer_b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
-`200 OK` with the [offer object](/api-reference/offers/create#offer-object).
+`200 OK` com o [objeto de oferta](/api-reference/offers/create#objeto-de-oferta).
 
-## Errors
+## Erros
 
-| Status | `code` | Cause |
+| Status | `code` | Causa |
 |---|---|---|
-| `400` | `invalid_offer_id` | The path segment is not a valid `offer_` ID |
-| `404` | `offer_not_found` | No such offer on your account, or it is archived |
+| `400` | `invalid_offer_id` | O trecho do caminho não é um ID `offer_` válido |
+| `404` | `offer_not_found` | Não existe essa oferta na sua conta, ou ela está arquivada |

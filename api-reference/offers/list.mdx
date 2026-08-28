@@ -1,39 +1,39 @@
 ---
-title: "List offers"
-sidebarTitle: "List offers"
-description: "List the offers on a product, newest first."
+title: "Listar ofertas"
+sidebarTitle: "Listar ofertas"
+description: "Lista as ofertas de um produto, mais recentes primeiro."
 ---
 
 <Info>
-  `GET /v1/products/{productId}/offers` &nbsp;·&nbsp; Requires scope `products:read`
+  `GET /v1/products/{productId}/offers` &nbsp;·&nbsp; Requer o escopo `products:read`
 </Info>
 
-Returns a product's offers, newest first, in a [list object](/api-reference/pagination). Archived offers are excluded.
+Retorna as ofertas de um produto, mais recentes primeiro, em um [objeto de lista](/api-reference/pagination). Ofertas arquivadas são omitidas.
 
-## Path parameters
+## Parâmetros de caminho
 
 <ParamField path="productId" type="string" required>
-  The product ID. Not a valid `prod_` ID → `400` (`invalid_product_id`); unknown product → `404` (`product_not_found`).
+  O ID do produto. Se não for um ID `prod_` válido → `400` (`invalid_product_id`); produto desconhecido → `404` (`product_not_found`).
 </ParamField>
 
-## Query parameters
+## Parâmetros de query
 
 <ParamField query="limit" type="integer" default="20">
-  Records to return, `1`–`100`.
+  Registros a retornar, de `1` a `100`.
 </ParamField>
 
 <ParamField query="starting_after" type="string">
-  An offer ID (`offer_…`) to page after.
+  Um ID de oferta (`offer_…`) a partir do qual paginar.
 </ParamField>
 
-## Request
+## Requisição
 
 ```bash cURL
 curl "https://api.moneydev.com.br/v1/products/prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a/offers" \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-## Response
+## Resposta
 
 ```json
 {
