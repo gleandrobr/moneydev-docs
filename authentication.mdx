@@ -1,48 +1,120 @@
 ---
 title: "Authentication"
 sidebarTitle: "Authentication"
-description: "How MoneyDev authenticates API requests: OAuth 2.0 client credentials and short-lived Bearer access tokens."
+description: "Exchange OAuth 2.0 client credentials for a Bearer access token and call the MoneyDev API."
 ---
 
-MoneyDev authenticates API requests with **OAuth 2.0 client credentials**. Your server exchanges a client ID and secret for a short-lived access token, then sends that token on every `/v1` call.
+MoneyDev uses the OAuth 2.0 **client credentials** grant ([RFC 6749](https://www.rfc-editor.org/rfc/rfc6749#section-4.4)). You exchange a client ID and secret for a short-lived access token, then send that token as a `Bearer` credential on every `/v1` request.
 
 <Warning>
-  Your client secret has full access to your account. Keep it server-side, in an environment variable. Rotate it from the [Dashboard](https://dashboard.moneydev.com.br) if it leaks.
+  Your client secret is a server-side credential with full access to your account. Never ship it in browser or mobile code. Store it in an environment variable and rotate it from the [Dashboard](https://dashboard.moneydev.com.br) if it leaks.
 </Warning>
 
-## 1. Get your credentials
+## Get your credentials
 
-In the [Dashboard](https://dashboard.moneydev.com.br) → **API Keys**, create an API client. You get a `client_id` and a `client_secret` (shown once). Each client is granted a set of scopes such as `customers:write` or `checkouts:write`.
+Create an API client in the [Dashboard](https://dashboard.moneydev.com.br) under **API Keys**. You receive:
 
-## 2. Get an access token
+- **`client_id`** — an identifier, safe to log.
+- **`client_secret`** — shown once at creation. Store it securely.
 
-```bash
-curl --request POST https://api.moneydev.com.br/oauth/token \
+Each client is granted a set of [scopes](#scopes).
+
+## Request an access token
+
+`POST` to the token endpoint with your credentials in an HTTP Basic header and a form-encoded body.
+
+```bash cURL
+curl --request POST \
+  --url https://api.moneydev.com.br/oauth/token \
   --user "$MONEYDEV_CLIENT_ID:$MONEYDEV_CLIENT_SECRET" \
-  --header "Content-Type: application/x-www-form-urlencoded" \
+  --header 'Content-Type: application/x-www-form-urlencoded' \
   --data grant_type=client_credentials
 ```
 
+```javascript Node.js
+const basic = Buffer.from(
+  `${process.env.MONEYDEV_CLIENT_ID}:${process.env.MONEYDEV_CLIENT_SECRET}`,
+).toString("base64");
+
+const res = await fetch("https://api.moneydev.com.br/oauth/token", {
+  method: "POST",
+  headers: {
+    Authorization: `Basic ${basic}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  },
+  body: new URLSearchParams({ grant_type: "client_credentials" }),
+});
+
+const { access_token, expires_in } = await res.json();
+```
+
+### Parameters
+
+<ParamField body="grant_type" type="string" required>
+  Must be `client_credentials`. It is the only supported grant.
+</ParamField>
+
+<ParamField body="scope" type="string">
+  Space-separated list of scopes to request. Omit it to receive every scope granted to your client. Requesting a scope your client does not have returns `invalid_scope`.
+</ParamField>
+
+### Response
+
 ```json
 {
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6ImF0K2p3dC...",
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6ImF0K2p3dCIsImtpZCI6Ii4uLiJ9...",
   "token_type": "Bearer",
   "expires_in": 900,
-  "scope": "customers:write checkouts:write"
+  "scope": "customers:read customers:write checkouts:write"
 }
 ```
 
-The token is valid for 15 minutes. Cache it, reuse it, and request a new one shortly before it expires — there is no refresh token.
+The token is a signed JWT valid for **`expires_in` seconds** (900 = 15 minutes). Cache it and reuse it until it is close to expiry, then request a new one — there is no refresh token. The token endpoint sends `Cache-Control: no-store`.
 
-## 3. Call the API
+## Call the API
+
+Send the token as a `Bearer` credential:
 
 ```bash
 curl https://api.moneydev.com.br/v1/me \
   --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-A missing or expired token returns `401`; a token without the scope an endpoint needs returns `403`.
+| Situation | Status | `error.code` |
+|---|---|---|
+| No `Authorization: Bearer` header | `401` | `missing_access_token` |
+| Token invalid, expired, or revoked | `401` | `invalid_access_token` |
+| Token lacks the scope the endpoint needs | `403` | `insufficient_scope` |
 
-<Note>
-  Full details — Basic-auth encoding, scopes, token-endpoint errors, and the `/.well-known` discovery endpoints — are in the [API reference](/api-reference/authentication).
-</Note>
+## Scopes
+
+| Scope | Grants |
+|---|---|
+| `customers:read` | Read customers |
+| `customers:write` | Create customers |
+| `products:read` | Read products and offers |
+| `products:write` | Create and update products and offers |
+| `checkouts:read` | Read checkout sessions |
+| `checkouts:write` | Create checkout sessions |
+| `all` | Every scope above |
+
+Each endpoint page lists the scope it requires. Offers are covered by the `products:*` scopes.
+
+## Token endpoint errors
+
+Errors from `/oauth/token` follow the OAuth spec shape — `{ "error": "...", "error_description": "..." }` — not the standard [API error object](/api-reference/errors).
+
+| `error` | Status | Cause |
+|---|---|---|
+| `invalid_request` | `400` | Body was not `application/x-www-form-urlencoded` |
+| `unsupported_grant_type` | `400` | `grant_type` was not `client_credentials` |
+| `invalid_client` | `401` | Missing or wrong client credentials |
+| `invalid_scope` | `400` | Requested a scope the client does not have |
+| `temporarily_unavailable` | `503` | The authorization server could not issue a token |
+
+## Discovery
+
+Standard metadata endpoints let OAuth tooling configure itself:
+
+- `GET /.well-known/oauth-authorization-server` — issuer, token endpoint, supported grants and scopes.
+- `GET /.well-known/jwks.json` — the public keys access tokens are signed with (`RS256`).

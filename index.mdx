@@ -1,43 +1,91 @@
 ---
-title: "MoneyDev Developer Docs"
-sidebarTitle: "Home"
-description: "MoneyDev is a payments gateway for Brazil. One REST API to model what you sell and collect Pix payments through a hosted checkout."
+title: "MoneyDev API"
+sidebarTitle: "Overview"
+description: "A REST API for Brazil: register customers, model what you sell as products and offers, and collect Pix payments through a hosted checkout."
 ---
 
-Welcome to MoneyDev — a payments gateway built for Brazil. Its REST API lets you register customers, model what you sell as products and offers, and open hosted checkout sessions where buyers pay with Pix.
+MoneyDev is a payments gateway for Brazil. Its REST API lets you register customers, model what you sell as **products** and **offers**, and open hosted **checkout** sessions where buyers pay with Pix. It speaks JSON over HTTPS and authenticates with OAuth 2.0 access tokens.
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
     Token to paid checkout in a handful of `curl` calls.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/overview">
-    Every endpoint, request parameter, and response object.
-  </Card>
-  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+  <Card title="Authentication" icon="key" href="/authentication">
     OAuth 2.0 client credentials, scopes, and token lifetime.
   </Card>
   <Card title="Errors" icon="triangle-exclamation" href="/api-reference/errors">
     The error object, status codes, and request IDs.
   </Card>
+  <Card title="Checkouts" icon="cart-shopping" href="/api-reference/checkouts/create">
+    Open a checkout and collect payment.
+  </Card>
 </CardGroup>
 
-## How it works
+## Base URL
+
+```text
+https://api.moneydev.com.br
+```
+
+Authentication and service endpoints live at the root; every business resource lives under the `/v1` prefix.
+
+| Path | Purpose |
+|---|---|
+| `POST /oauth/token` | Exchange client credentials for an access token |
+| `GET /.well-known/oauth-authorization-server` | OAuth authorization server metadata |
+| `GET /.well-known/jwks.json` | Public keys used to sign access tokens |
+| `GET /health` | Service health probe (no auth) |
+| `/v1/*` | Customers, products, offers, and checkouts |
+
+## Requests and responses
+
+The API is REST over HTTPS with JSON bodies. Send `Content-Type: application/json` on `POST` and `PATCH` — the one exception is `POST /oauth/token`, which takes `application/x-www-form-urlencoded` (see [Authentication](/authentication)). Unknown body fields are rejected with a `400` rather than ignored.
+
+| Verb | Use |
+|---|---|
+| `GET` | Retrieve a resource or list resources |
+| `POST` | Create a resource |
+| `PATCH` | Update a resource |
+
+Success responses use `2xx` (creates return `201`, everything else `200`); failures return a `4xx`/`5xx` with a structured [error object](/api-reference/errors). Single resources carry an `object` field naming their type; collections return a [list object](/api-reference/pagination).
+
+**Versioning** — the current version is `v1`, in the URL path. Additive changes ship within `v1` without notice, so parse responses tolerantly.
+
+## Resource IDs
+
+IDs are strings with a type prefix and a UUID, e.g. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`.
+
+| Prefix | Object |
+|---|---|
+| `cus_` | Customer |
+| `prod_` | Product |
+| `offer_` | Offer |
+| `checkout_` | Checkout session |
+| `item_` | Checkout line item |
+| `seller_` | Seller (your account) |
+| `client_` | API client |
+
+## Money
+
+Amounts are integers in the currency's **minor unit** (centavos for BRL). `R$ 49,90` is `4990`. Currency codes are uppercase ISO 4217 — MoneyDev settles in `BRL`.
+
+## Request IDs
+
+Every response includes an `X-Request-Id` header, and error bodies repeat it as `error.request_id`. Include it when contacting [support](mailto:support@moneydev.com.br).
+
+## A typical integration
 
 <Steps>
-  <Step title="Create an API client">
-    In the [Dashboard](https://dashboard.moneydev.com.br) → **API Keys**, create a client. You get a `client_id` and a `client_secret`.
-  </Step>
   <Step title="Get an access token">
-    Exchange those credentials at `POST /oauth/token` for a Bearer access token (valid 15 minutes). See [Authentication](/api-reference/authentication).
+    Exchange your client credentials at `POST /oauth/token`. See [Authentication](/authentication).
   </Step>
-  <Step title="Model what you sell">
-    Create a [product](/api-reference/products/create) and an [offer](/api-reference/offers/create) — an offer is a price (one-time or recurring) for a product.
+  <Step title="Create a product and its offer">
+    A [product](/api-reference/products/create) is what you sell; an [offer](/api-reference/offers/create) is a specific price for it.
   </Step>
-  <Step title="Open a checkout and collect payment">
-    [Create a checkout](/api-reference/checkouts/create) for an offer, redirect the buyer to its `checkout_url`, and poll the checkout until `status` is `completed`.
+  <Step title="Open a checkout">
+    [Create a checkout](/api-reference/checkouts/create) for an offer. The response includes a `checkout_url`.
+  </Step>
+  <Step title="Send the buyer to pay">
+    Redirect them to `checkout_url`, the hosted page where they pay with Pix. Poll [the checkout](/api-reference/checkouts/retrieve) until `status` is `completed`.
   </Step>
 </Steps>
-
-<Note>
-  The developer API covers customers, products, offers, and checkouts. Payment itself happens on the hosted checkout page at `pay.moneydev.com.br`, backed by Pix.
-</Note>

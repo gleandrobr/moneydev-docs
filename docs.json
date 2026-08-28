@@ -9,71 +9,54 @@
   },
   "favicon": "/favicon.svg",
   "navigation": {
-    "tabs": [
+    "groups": [
       {
-        "tab": "Get Started",
-        "groups": [
-          {
-            "group": "Get Started",
-            "pages": [
-              "introduction",
-              "quickstart",
-              "authentication"
-            ]
-          }
+        "group": "Introduction",
+        "pages": [
+          "index",
+          "quickstart",
+          "authentication",
+          "api-reference/errors",
+          "api-reference/pagination"
         ]
       },
       {
-        "tab": "API Reference",
-        "groups": [
-          {
-            "group": "Introduction",
-            "pages": [
-              "api-reference/overview",
-              "api-reference/authentication",
-              "api-reference/errors",
-              "api-reference/pagination"
-            ]
-          },
-          {
-            "group": "Account",
-            "pages": [
-              "api-reference/me"
-            ]
-          },
-          {
-            "group": "Customers",
-            "pages": [
-              "api-reference/customers/create",
-              "api-reference/customers/list",
-              "api-reference/customers/retrieve"
-            ]
-          },
-          {
-            "group": "Products",
-            "pages": [
-              "api-reference/products/create",
-              "api-reference/products/list",
-              "api-reference/products/retrieve"
-            ]
-          },
-          {
-            "group": "Offers",
-            "pages": [
-              "api-reference/offers/create",
-              "api-reference/offers/list",
-              "api-reference/offers/retrieve",
-              "api-reference/offers/update"
-            ]
-          },
-          {
-            "group": "Checkouts",
-            "pages": [
-              "api-reference/checkouts/create",
-              "api-reference/checkouts/list",
-              "api-reference/checkouts/retrieve"
-            ]
-          }
+        "group": "Account",
+        "pages": [
+          "api-reference/me"
+        ]
+      },
+      {
+        "group": "Customers",
+        "pages": [
+          "api-reference/customers/create",
+          "api-reference/customers/list",
+          "api-reference/customers/retrieve"
+        ]
+      },
+      {
+        "group": "Products",
+        "pages": [
+          "api-reference/products/create",
+          "api-reference/products/list",
+          "api-reference/products/retrieve"
+        ]
+      },
+      {
+        "group": "Offers",
+        "pages": [
+          "api-reference/offers/create",
+          "api-reference/offers/list",
+          "api-reference/offers/retrieve",
+          "api-reference/offers/update"
+        ]
+      },
+      {
+        "group": "Checkouts",
+        "pages": [
+          "api-reference/checkouts/create",
+          "api-reference/checkouts/list",
+          "api-reference/checkouts/retrieve"
         ]
       }
     ]
