@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Documentation",
+        "tab": "Get Started",
         "groups": [
           {
             "group": "Get Started",
@@ -19,41 +19,6 @@
               "introduction",
               "quickstart",
               "authentication"
-            ]
-          },
-          {
-            "group": "Core Concepts",
-            "pages": [
-              "concepts/payments",
-              "concepts/transactions",
-              "concepts/customers",
-              "concepts/webhooks"
-            ]
-          },
-          {
-            "group": "Payment Methods",
-            "pages": [
-              "payment-methods/pix",
-              "payment-methods/boleto",
-              "payment-methods/credit-card",
-              "payment-methods/debit-card"
-            ]
-          },
-          {
-            "group": "Guides",
-            "pages": [
-              "guides/accept-payment",
-              "guides/refunds",
-              "guides/recurring-billing",
-              "guides/split-payments"
-            ]
-          },
-          {
-            "group": "Resources",
-            "pages": [
-              "resources/testing",
-              "resources/errors",
-              "resources/faq"
             ]
           }
         ]
