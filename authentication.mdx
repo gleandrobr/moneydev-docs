@@ -1,169 +1,48 @@
 ---
-title: "MoneyDev Authentication: API Keys and Bearer Tokens"
+title: "Authentication"
 sidebarTitle: "Authentication"
-description: "MoneyDev authenticates requests with API keys as Bearer tokens. Learn how to get keys, use test vs live environments, set permissions, and fix 401 errors."
+description: "How MoneyDev authenticates API requests: OAuth 2.0 client credentials and short-lived Bearer access tokens."
 ---
 
-MoneyDev authenticates every API request using **API keys** — long, randomly generated strings that act as your credentials. You include your key in the `Authorization` header of each request using the Bearer scheme. There are no sessions, no OAuth tokens to refresh, and no cookie-based flows: every request is stateless and self-contained.
+MoneyDev authenticates API requests with **OAuth 2.0 client credentials**. Your server exchanges a client ID and secret for a short-lived access token, then sends that token on every `/v1` call.
 
 <Warning>
-  Your secret API key grants full access to your MoneyDev account. **Never expose it in client-side code** (JavaScript bundles, mobile apps, public repositories, or browser requests). Always make API calls from your server. If a key is compromised, rotate it immediately from **Dashboard → API Keys**.
+  Your client secret has full access to your account. Keep it server-side, in an environment variable. Rotate it from the [Dashboard](https://dashboard.moneydev.com.br) if it leaks.
 </Warning>
 
-## Obtaining Your API Keys
+## 1. Get your credentials
 
-After creating your MoneyDev account, open the [Dashboard](https://dashboard.moneydev.com.br) and navigate to **Settings → API Keys**. You'll find two key pairs already generated for you — one for testing and one for live use.
+In the [Dashboard](https://dashboard.moneydev.com.br) → **API Keys**, create an API client. You get a `client_id` and a `client_secret` (shown once). Each client is granted a set of scopes such as `customers:write` or `checkouts:write`.
 
-Each key pair contains:
-
-- A **secret key** (`sk_test_...` or `sk_live_...`) used in server-to-server API calls. Keep this private.
-- A **publishable key** (`pk_test_...` or `pk_live_...`) used in client-side SDKs (e.g., to tokenise card data in the browser). This key is safe to expose publicly.
-
-You can generate additional keys, assign them labels (e.g., "Backend service", "Mobile app"), restrict their permissions, and revoke them at any time from the same page.
-
-## Making Authenticated Requests
-
-Pass your secret key as a `Bearer` token in the `Authorization` header of every request. No other authentication mechanism is accepted by the API.
-
-<CodeGroup>
-
-```bash cURL
-curl --request GET \
-  --url https://api.moneydev.com.br/v1/payments \
-  --header 'Authorization: Bearer sk_test_4eC39HqLyjWDarjtT7en'
-```
-
-```javascript Node.js
-const response = await fetch('https://api.moneydev.com.br/v1/payments', {
-  method: 'GET',
-  headers: {
-    'Authorization': 'Bearer sk_test_4eC39HqLyjWDarjtT7en',
-    'Content-Type': 'application/json',
-  },
-});
-
-const data = await response.json();
-console.log(data);
-```
-
-```python Python
-import requests
-
-response = requests.get(
-    'https://api.moneydev.com.br/v1/payments',
-    headers={
-        'Authorization': 'Bearer sk_test_4eC39HqLyjWDarjtT7en',
-        'Content-Type': 'application/json',
-    }
-)
-
-data = response.json()
-print(data)
-```
-
-```php PHP
-<?php
-
-$client = new \GuzzleHttp\Client();
-
-$response = $client->request('GET', 'https://api.moneydev.com.br/v1/payments', [
-    'headers' => [
-        'Authorization' => 'Bearer sk_test_4eC39HqLyjWDarjtT7en',
-        'Content-Type'  => 'application/json',
-    ],
-]);
-
-$data = json_decode($response->getBody(), true);
-print_r($data);
-```
-
-</CodeGroup>
-
-Replace `sk_test_4eC39HqLyjWDarjtT7en` with your actual secret key from the Dashboard. We recommend storing keys in **environment variables** rather than hard-coding them:
+## 2. Get an access token
 
 ```bash
-# .env
-MONEYDEV_SECRET_KEY=sk_test_4eC39HqLyjWDarjtT7en
+curl --request POST https://api.moneydev.com.br/oauth/token \
+  --user "$MONEYDEV_CLIENT_ID:$MONEYDEV_CLIENT_SECRET" \
+  --header "Content-Type: application/x-www-form-urlencoded" \
+  --data grant_type=client_credentials
 ```
-
-```javascript Node.js (env var)
-const apiKey = process.env.MONEYDEV_SECRET_KEY;
-
-const response = await fetch('https://api.moneydev.com.br/v1/payments', {
-  headers: { 'Authorization': `Bearer ${apiKey}` },
-});
-```
-
-## Test vs Live Keys
-
-MoneyDev maintains two completely isolated environments. The key prefix tells you — and the API — which environment your request targets.
-
-<Tabs>
-  <Tab title="Test Keys (sk_test_)">
-    **Use during development and QA.**
-
-    - Prefixed with `sk_test_` (secret) and `pk_test_` (publishable).
-    - All requests hit the **sandbox environment** — no real money is moved.
-    - PIX QR codes and boletos are simulated; you can trigger status transitions manually from the Dashboard under **Sandbox → Simulate Events**.
-    - No KYC or account verification is required to use test keys.
-    - Test keys are available immediately after you create your account.
-
-    ```bash
-    # Example test key
-    Authorization: Bearer sk_test_4eC39HqLyjWDarjtT7en
-    ```
-  </Tab>
-  <Tab title="Live Keys (sk_live_)">
-    **Use in your production environment only.**
-
-    - Prefixed with `sk_live_` (secret) and `pk_live_` (publishable).
-    - Requests process **real transactions** — real money is charged and transferred.
-    - Live keys are unlocked only after you complete **account verification** (CNPJ/CPF, bank account details, and identity documents) in the Dashboard.
-    - Always set stricter key permissions on live keys (see [Key Permissions](#key-permissions) below).
-    - Rotate live keys on a regular schedule and immediately if you suspect a breach.
-
-    ```bash
-    # Example live key
-    Authorization: Bearer sk_live_9xZvT1mQpLnR3bKwY7cE
-    ```
-  </Tab>
-</Tabs>
-
-<Note>
-  You can have both a test and a live key active in different environments simultaneously. A common pattern is to store the key in an environment variable (`MONEYDEV_SECRET_KEY`) and swap the value between `sk_test_` and `sk_live_` as you promote builds from staging to production.
-</Note>
-
-## Key Permissions
-
-When you create additional API keys in **Dashboard → API Keys → New key**, you can assign one of two permission levels:
-
-| Permission level  | What it can do                                                                      |
-|-------------------|-------------------------------------------------------------------------------------|
-| **Full access**   | Create, read, update, and cancel any resource (payments, refunds, customers, etc.). Use for your main backend service. |
-| **Read-only**     | Retrieve and list resources only — no write operations permitted. Ideal for analytics services, dashboards, or third-party reporting tools. |
-
-Use the principle of least privilege: grant each integration only the permissions it actually needs. If a read-only key is compromised, an attacker cannot create charges or issue refunds.
-
-## Error Responses
-
-If your API key is missing, malformed, or invalid, MoneyDev returns a `401 Unauthorized` response.
 
 ```json
 {
-  "error": {
-    "code": "unauthorized",
-    "message": "No valid API key was provided. Include your key in the Authorization header as: Bearer YOUR_API_KEY",
-    "docs_url": "https://docs.moneydev.com.br/authentication"
-  }
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6ImF0K2p3dC...",
+  "token_type": "Bearer",
+  "expires_in": 900,
+  "scope": "customers:write checkouts:write"
 }
 ```
 
-Common causes of `401` errors:
+The token is valid for 15 minutes. Cache it, reuse it, and request a new one shortly before it expires — there is no refresh token.
 
-- **Missing header** — The `Authorization` header was not included in the request.
-- **Wrong format** — The header value doesn't follow `Bearer YOUR_KEY` (note the space after `Bearer`).
-- **Revoked key** — The key was deleted or rotated from the Dashboard.
-- **Wrong environment** — You're using a `sk_test_` key against a live-only endpoint, or vice versa.
-- **Typo or truncation** — The key was copied incorrectly. Re-copy it directly from the Dashboard.
+## 3. Call the API
 
-If you continue to receive `401` errors after verifying your key, contact [support@moneydev.com.br](mailto:support@moneydev.com.br) with your account email and the request ID from the `X-Request-Id` response header.
+```bash
+curl https://api.moneydev.com.br/v1/me \
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+A missing or expired token returns `401`; a token without the scope an endpoint needs returns `403`.
+
+<Note>
+  Full details — Basic-auth encoding, scopes, token-endpoint errors, and the `/.well-known` discovery endpoints — are in the [API reference](/api-reference/authentication).
+</Note>

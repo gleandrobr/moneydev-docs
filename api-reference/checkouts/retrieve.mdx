@@ -1,0 +1,46 @@
+---
+title: "Retrieve a checkout"
+sidebarTitle: "Retrieve checkout"
+description: "Fetch a checkout session by ID and check its payment status."
+---
+
+<Info>
+  `GET /v1/checkouts/{checkoutId}` &nbsp;·&nbsp; Requires scope `checkouts:read`
+</Info>
+
+Fetches one checkout session. Poll this after sending a buyer to `checkout_url` to see when `status` turns `completed`. If the session is `open` and past `expires_at`, this call marks it `expired` before returning.
+
+## Path parameters
+
+<ParamField path="checkoutId" type="string" required>
+  The checkout ID, e.g. `checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c`. Not a valid `checkout_` ID → `400` (`invalid_checkout_id`).
+</ParamField>
+
+## Request
+
+```bash cURL
+curl https://api.moneydev.com.br/v1/checkouts/checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c \
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+## Response
+
+`200 OK` with the [checkout object](/api-reference/checkouts/create#checkout-object).
+
+| `status` | Meaning |
+|---|---|
+| `open` | Awaiting payment |
+| `completed` | Paid — `completed_at` is set |
+| `expired` | Reached `expires_at` without payment |
+| `canceled` | Canceled before payment |
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_checkout_id` | The path segment is not a valid `checkout_` ID |
+| `404` | `checkout_not_found` | No such checkout on your account |
+
+<Note>
+  A seller-facing webhook for `completed` is on the roadmap. For now, poll this endpoint.
+</Note>

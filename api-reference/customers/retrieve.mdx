@@ -1,178 +1,48 @@
 ---
-title: "Retrieve a Customer — Full Profile with Saved Cards"
-sidebarTitle: "Retrieve Customer"
-description: "Fetch a customer's full profile including contact details, billing address, stored tokenized cards, and any metadata you have attached."
+title: "Retrieve a customer"
+sidebarTitle: "Retrieve customer"
+description: "Fetch a single customer by ID."
 ---
 
-Use this endpoint to fetch the full profile of a customer, including their contact details, address, stored tokenized cards, and metadata. This is useful for displaying customer information in your dashboard, pre-filling checkout forms, or verifying data before creating a payment.
+<Info>
+  `GET /v1/customers/{customerId}` &nbsp;·&nbsp; Requires scope `customers:read`
+</Info>
 
-## Endpoint
+## Path parameters
 
-```
-GET https://api.moneydev.com.br/v1/customers/:id
-```
+<ParamField path="customerId" type="string" required>
+  The customer ID, e.g. `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`. A value that isn't a well-formed `cus_` ID returns `400` (`invalid_customer_id`).
+</ParamField>
 
 ## Request
 
-### Headers
-
-| Header | Value |
-|---|---|
-| `Authorization` | `Bearer YOUR_API_KEY` |
-
-### Path Parameters
-
-<ParamField path="id" type="string" required>
-  The unique identifier of the customer to retrieve. Customer IDs begin with the prefix `cus_` (e.g., `cus_01HABC789XYZ`).
-</ParamField>
-
-## Code Example
-
 ```bash cURL
-curl --request GET \
-  --url https://api.moneydev.com.br/v1/customers/cus_01HABC789XYZ \
-  --header 'Authorization: Bearer YOUR_API_KEY'
+curl https://api.moneydev.com.br/v1/customers/cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d \
+  --header "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
 ## Response
 
-### Response Fields
-
-<ResponseField name="id" type="string">
-  Unique customer identifier with the prefix `cus_`.
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  The customer's full name or company name.
-</ResponseField>
-
-<ResponseField name="email" type="string">
-  The customer's email address.
-</ResponseField>
-
-<ResponseField name="cpf" type="string">
-  The customer's individual tax ID (CPF), digits only. `null` if not stored.
-</ResponseField>
-
-<ResponseField name="cnpj" type="string">
-  The customer's company tax ID (CNPJ), digits only. `null` if not stored.
-</ResponseField>
-
-<ResponseField name="phone" type="string">
-  The customer's phone number in E.164 format. `null` if not stored.
-</ResponseField>
-
-<ResponseField name="address" type="object">
-  The customer's stored address.
-
-  <Expandable title="address fields">
-    <ResponseField name="address.street" type="string">
-      Street name.
-    </ResponseField>
-    <ResponseField name="address.number" type="string">
-      Street number.
-    </ResponseField>
-    <ResponseField name="address.complement" type="string">
-      Address complement (apartment, suite, etc.). `null` if not provided.
-    </ResponseField>
-    <ResponseField name="address.district" type="string">
-      Neighborhood or district.
-    </ResponseField>
-    <ResponseField name="address.city" type="string">
-      City name.
-    </ResponseField>
-    <ResponseField name="address.state" type="string">
-      Two-letter Brazilian state abbreviation.
-    </ResponseField>
-    <ResponseField name="address.zip_code" type="string">
-      Brazilian postal code (CEP), digits only.
-    </ResponseField>
-    <ResponseField name="address.country" type="string">
-      ISO 3166-1 alpha-2 country code (e.g., `"BR"`).
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="cards" type="array">
-  An array of tokenized cards saved to this customer's profile. Each card object contains the following fields:
-
-  <Expandable title="card item fields">
-    <ResponseField name="cards[].id" type="string">
-      Unique card token identifier with the prefix `card_`. Pass this as the `card_token` when creating a card payment.
-    </ResponseField>
-    <ResponseField name="cards[].last4" type="string">
-      The last four digits of the card number.
-    </ResponseField>
-    <ResponseField name="cards[].brand" type="string">
-      The card brand: `visa`, `mastercard`, `elo`, `amex`, or `hipercard`.
-    </ResponseField>
-    <ResponseField name="cards[].exp_month" type="integer">
-      The card's expiry month as a two-digit integer (e.g., `7` for July).
-    </ResponseField>
-    <ResponseField name="cards[].exp_year" type="integer">
-      The card's expiry year as a four-digit integer (e.g., `2028`).
-    </ResponseField>
-    <ResponseField name="cards[].holder_name" type="string">
-      The cardholder name as printed on the card.
-    </ResponseField>
-    <ResponseField name="cards[].created_at" type="string">
-      ISO 8601 timestamp of when this card was tokenized.
-    </ResponseField>
-  </Expandable>
-</ResponseField>
-
-<ResponseField name="metadata" type="object">
-  The key-value metadata object attached to this customer. Returns an empty object `{}` if none was stored.
-</ResponseField>
-
-<ResponseField name="created_at" type="string">
-  ISO 8601 timestamp of when the customer was created.
-</ResponseField>
-
-## Example Response
+`200 OK` with the [customer object](/api-reference/customers/create#customer-object).
 
 ```json
 {
-  "id": "cus_01HABC789XYZ",
+  "id": "cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d",
+  "object": "customer",
   "name": "João da Silva",
-  "email": "joao.silva@email.com",
-  "cpf": "12345678901",
-  "cnpj": null,
+  "email": "joao.silva@example.com",
   "phone": "+5511999999999",
-  "address": {
-    "street": "Avenida Paulista",
-    "number": "1000",
-    "complement": "Apto 42",
-    "district": "Bela Vista",
-    "city": "São Paulo",
-    "state": "SP",
-    "zip_code": "01310100",
-    "country": "BR"
-  },
-  "cards": [
-    {
-      "id": "card_01HCARD111AAABBBCCC",
-      "last4": "4242",
-      "brand": "visa",
-      "exp_month": 12,
-      "exp_year": 2028,
-      "holder_name": "JOAO DA SILVA",
-      "created_at": "2025-06-01T09:30:00Z"
-    },
-    {
-      "id": "card_01HCARD222DDDEEEFFF",
-      "last4": "5100",
-      "brand": "mastercard",
-      "exp_month": 3,
-      "exp_year": 2027,
-      "holder_name": "JOAO DA SILVA",
-      "created_at": "2025-07-10T14:15:00Z"
-    }
-  ],
-  "metadata": {
-    "user_id": "usr_789",
-    "plan": "pro"
-  },
-  "created_at": "2025-07-14T10:00:00Z"
+  "tax_id": "12345678909",
+  "status": "active",
+  "metadata": { "user_id": "usr_789" },
+  "created_at": "2026-08-28T13:00:00.000Z",
+  "updated_at": "2026-08-28T13:00:00.000Z"
 }
 ```
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_customer_id` | The path segment is not a valid `cus_` ID |
+| `404` | `customer_not_found` | No such customer on your account |

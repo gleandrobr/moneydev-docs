@@ -33,24 +33,23 @@ MoneyDev covers every major payment method in Brazil and the tooling you need to
 
 ## How the API Works
 
-MoneyDev exposes a standard **REST API** that communicates exclusively over HTTPS. All request and response bodies are formatted as **JSON**. Authentication is handled via API keys passed in the `Authorization` header — no OAuth flow required.
+MoneyDev exposes a standard **REST API** that communicates exclusively over HTTPS, with **JSON** request and response bodies. Requests authenticate with an OAuth 2.0 access token obtained via the [client credentials grant](/api-reference/authentication).
 
 **Base URL**
 
 ```text
-https://api.moneydev.com.br/v1
+https://api.moneydev.com.br
 ```
 
-Every resource in the API — payments, customers, refunds, subscriptions — lives under this base URL and follows predictable, resource-oriented URL conventions. Standard HTTP verbs apply:
+Authentication and service endpoints sit at the root (`/oauth/token`, `/health`); business resources — customers, products, offers, and checkouts — live under `/v1`. URLs are resource-oriented and use standard verbs:
 
 | Verb     | Use                                      |
 |----------|------------------------------------------|
 | `GET`    | Retrieve a resource or list resources    |
 | `POST`   | Create a new resource                    |
 | `PATCH`  | Update an existing resource              |
-| `DELETE` | Cancel or remove a resource              |
 
-HTTP status codes reflect the outcome of every request: `2xx` for success, `4xx` for client errors (bad request, authentication failure, validation), and `5xx` for server-side issues. Error responses always include a machine-readable `code` field and a human-readable `message` to make debugging straightforward.
+HTTP status codes reflect the outcome: `2xx` for success, `4xx` for client errors (bad request, authentication failure, validation), and `5xx` for server-side issues. Error responses include a machine-readable `code`, a human-readable `message`, and a `request_id`. See the [errors reference](/api-reference/errors).
 
 ## Who MoneyDev Is For
 

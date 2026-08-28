@@ -1,0 +1,106 @@
+---
+title: "Create an offer"
+sidebarTitle: "Create offer"
+description: "Add a priced offer to a product."
+---
+
+<Info>
+  `POST /v1/products/{productId}/offers` &nbsp;·&nbsp; Requires scope `products:write`
+</Info>
+
+An **offer** is a specific price for a product — one-time or recurring. A product can have several; exactly one is the default.
+
+<Note>
+  The new offer becomes the product's default if you pass `is_default: true`, **or** if the product currently has no active default. Promoting an offer to default demotes the previous one.
+</Note>
+
+## Path parameters
+
+<ParamField path="productId" type="string" required>
+  Product to attach the offer to. Not a valid `prod_` ID → `400` (`invalid_product_id`).
+</ParamField>
+
+## Body parameters
+
+<ParamField body="amount_minor" type="integer" required>
+  Price in minor units (centavos). `1`–`99999999999`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Uppercase ISO 4217, e.g. `BRL`.
+</ParamField>
+
+<ParamField body="name" type="string">
+  Offer label, 1–160 characters. Defaults to `"Padrão"`.
+</ParamField>
+
+<ParamField body="compare_at_amount_minor" type="integer">
+  A struck-through reference price. Must be `≥ amount_minor`.
+</ParamField>
+
+<ParamField body="type" type="string" default="one_time">
+  `one_time` or `recurring`.
+</ParamField>
+
+<ParamField body="billing_interval" type="string">
+  `day`, `week`, `month`, or `year`. Required when `type` is `recurring`; rejected when `one_time`.
+</ParamField>
+
+<ParamField body="interval_count" type="integer">
+  Number of intervals between charges, `1`–`999`. Recurring only; defaults to `1`.
+</ParamField>
+
+<ParamField body="is_default" type="boolean">
+  Set `true` to make this the product's default offer.
+</ParamField>
+
+## Request
+
+```bash cURL
+curl --request POST \
+  https://api.moneydev.com.br/v1/products/prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a/offers \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "name": "Mensal",
+    "amount_minor": 4990,
+    "currency": "BRL",
+    "type": "recurring",
+    "billing_interval": "month"
+  }'
+```
+
+## Response
+
+`201 Created` with the [offer object](#offer-object).
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_product_id` | Path segment isn't a valid `prod_` ID |
+| `400` | `invalid_request` | Validation failed; `param` names the field |
+| `400` | `invalid_compare_at_amount` | `compare_at_amount_minor` is below `amount_minor` |
+| `400` | `billing_interval_required` | `type` is `recurring` with no `billing_interval` |
+| `400` | `invalid_one_time_billing` | A `one_time` offer set `billing_interval` or `interval_count` |
+| `404` | `product_not_found` | No such product, or it is archived |
+
+## Offer object
+
+<ResponseField name="id" type="string">Offer ID, prefixed `offer_`.</ResponseField>
+<ResponseField name="object" type="string">Always `"offer"`.</ResponseField>
+<ResponseField name="product_id" type="string">The parent product ID.</ResponseField>
+<ResponseField name="name" type="string">Offer label.</ResponseField>
+<ResponseField name="lookup_key" type="string">
+  A stable, system-generated key for the offer.
+</ResponseField>
+<ResponseField name="amount_minor" type="integer">Price in minor units.</ResponseField>
+<ResponseField name="compare_at_amount_minor" type="integer | null">Reference price, or `null`.</ResponseField>
+<ResponseField name="currency" type="string">ISO 4217 currency.</ResponseField>
+<ResponseField name="type" type="string">`one_time` or `recurring`.</ResponseField>
+<ResponseField name="billing_interval" type="string | null">`day` / `week` / `month` / `year`, or `null` for one-time.</ResponseField>
+<ResponseField name="interval_count" type="integer | null">Intervals between charges, or `null` for one-time.</ResponseField>
+<ResponseField name="is_default" type="boolean">Whether this is the product's default offer.</ResponseField>
+<ResponseField name="active" type="boolean">Whether the offer can be used in new checkouts.</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>

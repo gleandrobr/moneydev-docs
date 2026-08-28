@@ -1,89 +1,83 @@
 ---
-title: "MoneyDev REST API Overview — Getting Started Guide"
+title: "MoneyDev API Overview"
 sidebarTitle: "Overview"
-description: "Explore the MoneyDev REST API: base URL, versioning, request format, idempotency, rate limits, and official SDKs for Node.js, Python, PHP, and Ruby."
+description: "Base URL, request and response format, resource IDs, money handling, and request IDs for the MoneyDev REST API."
 ---
 
-The MoneyDev REST API gives you programmatic access to the full MoneyDev payments platform. You can create and capture payments, manage customers, configure webhooks, and query transaction history — all over HTTPS with JSON request and response bodies.
+The MoneyDev API is a REST API for building payment flows: register customers, model what you sell as products and offers, and open hosted checkout sessions your buyers pay through. It speaks JSON over HTTPS and authenticates with OAuth 2.0 access tokens.
 
 ## Base URL
 
-Every API request is made to the following base URL:
-
 ```text
-https://api.moneydev.com.br/v1
+https://api.moneydev.com.br
 ```
+
+Authentication and service endpoints live at the root; every business resource lives under the `/v1` prefix.
+
+| Path | Purpose |
+|---|---|
+| `POST /oauth/token` | Exchange client credentials for an access token |
+| `GET /.well-known/oauth-authorization-server` | OAuth authorization server metadata |
+| `GET /.well-known/jwks.json` | Public keys used to sign access tokens |
+| `GET /health` | Service health probe (no auth) |
+| `/v1/*` | Customers, products, offers, and checkouts |
 
 ## Versioning
 
-The current version of the API is **v1**, embedded directly in the URL path. When breaking changes are introduced, a new version will be released under a new path prefix (e.g. `/v2`). Non-breaking additions — new fields, new endpoints — are made to the current version without notice.
+The current version is **v1**, carried in the URL path. Additive changes — new endpoints, new response fields — ship within `v1` without notice, so parse responses tolerantly. A breaking change would ship under a new prefix.
 
-## Request Format
+## Requests
 
-Send all request bodies as JSON and include the `Content-Type: application/json` header on every mutating request (`POST`, `PUT`, `PATCH`). Query parameters are used for filtering and pagination on `GET` requests.
+Send a JSON body with `Content-Type: application/json` on `POST` and `PATCH` requests. The one exception is `POST /oauth/token`, which takes `application/x-www-form-urlencoded` (see [Authentication](/api-reference/authentication)).
 
-```http
-Content-Type: application/json
-Authorization: Bearer YOUR_API_KEY
-```
+Unknown body fields are rejected with a `400` rather than ignored.
 
-## Response Format
+## Responses
 
-Every response body is JSON.
+Every response is JSON.
 
-- **Success** — the API returns a `2xx` status code alongside the created or updated resource object.
-- **Error** — the API returns a `4xx` or `5xx` status code alongside a structured [error object](/api-reference/errors).
+- **Success** — a `2xx` status and the resource object. Creation endpoints return `201`; reads and updates return `200`.
+- **Error** — a `4xx` or `5xx` status and a structured [error object](/api-reference/errors).
 
-## Idempotency
+Single resources carry an `object` field naming their type (`"customer"`, `"product"`, `"offer"`, `"checkout"`). Collection endpoints return a [list object](/api-reference/pagination).
 
-To safely retry requests without accidentally duplicating actions (such as double-charging a customer), include an `Idempotency-Key` header containing a UUID that is unique to each logical operation. The API caches the result of the first request for 24 hours and returns it unchanged on any subsequent request that carries the same key.
+## Resource IDs
 
-```http
-Idempotency-Key: e9f3a12b-8c47-4d1e-9b62-0a5f3c2d7e81
-```
+IDs are strings with a type prefix and a UUID. The prefix tells you what kind of object an ID points at:
 
-See the [errors reference](/api-reference/errors#idempotency-errors) for behavior when the same key is reused with different parameters.
-
-## Rate Limits
-
-The API allows up to **1 000 requests per minute** per API key. Exceeding that limit returns a `429 Too Many Requests` response. The following headers are included on every response to help you track consumption:
-
-| Header | Description |
+| Prefix | Object |
 |---|---|
-| `X-RateLimit-Limit` | Maximum requests allowed per minute. |
-| `X-RateLimit-Remaining` | Requests remaining in the current window. |
-| `X-RateLimit-Reset` | Unix timestamp (seconds) when the window resets. |
+| `cus_` | Customer |
+| `prod_` | Product |
+| `offer_` | Offer |
+| `checkout_` | Checkout session |
+| `item_` | Checkout line item |
+| `seller_` | Seller (your account) |
+| `client_` | API client |
 
-## Quick Start: List Payments
+Example: `cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d`.
 
-```bash
-curl https://api.moneydev.com.br/v1/payments \
-  -H "Authorization: Bearer sk_live_yourkey" \
-  -H "Content-Type: application/json"
-```
+## Money
 
-## SDKs
+Amounts are integers in the currency's **minor unit** (centavos for BRL). `R$ 49,90` is `4990`. Currency codes are uppercase ISO 4217 — MoneyDev settles in `BRL`.
 
-Official SDKs are available in the most common server-side languages. Install the one that matches your stack:
+## Request IDs
 
-<CodeGroup>
+Every response includes an `X-Request-Id` header, and error bodies repeat it as `error.request_id`. Include it when contacting [support](mailto:support@moneydev.com.br).
 
-```bash Node.js
-npm install @moneydev/node
-```
+## A typical integration
 
-```bash Python
-pip install moneydev
-```
-
-```bash PHP
-composer require moneydev/moneydev-php
-```
-
-```bash Ruby
-gem install moneydev
-```
-
-</CodeGroup>
-
-All SDKs wrap the REST API, handle authentication, and surface errors as typed exceptions. Refer to each SDK's README on GitHub for full usage documentation.
+<Steps>
+  <Step title="Get an access token">
+    Exchange your client credentials at `POST /oauth/token`. See [Authentication](/api-reference/authentication).
+  </Step>
+  <Step title="Create a product and its offer">
+    A [product](/api-reference/products/create) is what you sell; an [offer](/api-reference/offers/create) is a specific price for it.
+  </Step>
+  <Step title="Open a checkout">
+    [Create a checkout](/api-reference/checkouts/create) for an offer. The response includes a `checkout_url`.
+  </Step>
+  <Step title="Send the buyer to the checkout">
+    Redirect them to `checkout_url`, the hosted page where they pay with Pix. Poll [the checkout](/api-reference/checkouts/retrieve) until `status` is `completed`.
+  </Step>
+</Steps>

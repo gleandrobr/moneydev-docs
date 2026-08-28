@@ -1,0 +1,71 @@
+---
+title: "Get current account"
+sidebarTitle: "Get account"
+description: "Retrieve the seller account and API client bound to the current access token."
+---
+
+<Info>
+  `GET /v1/me` &nbsp;·&nbsp; Requires any valid access token — no specific scope.
+</Info>
+
+Returns the seller account the token acts on and the API client it was issued to. Useful as a connectivity and credentials check.
+
+## Request
+
+```bash cURL
+curl https://api.moneydev.com.br/v1/me \
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+## Response
+
+<ResponseField name="seller" type="object">
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="seller.id" type="string">
+      Seller ID, prefixed `seller_`.
+    </ResponseField>
+    <ResponseField name="seller.name" type="string">
+      Display name of the seller account.
+    </ResponseField>
+    <ResponseField name="seller.status" type="string">
+      Always `active` — tokens are only issued for active sellers.
+    </ResponseField>
+    <ResponseField name="seller.default_currency" type="string">
+      ISO 4217 currency the account settles in, e.g. `BRL`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="api_client" type="object">
+  <Expandable title="properties" defaultOpen>
+    <ResponseField name="api_client.id" type="string">
+      API client ID, prefixed `client_`.
+    </ResponseField>
+    <ResponseField name="api_client.name" type="string">
+      Label given to the client in the Dashboard.
+    </ResponseField>
+    <ResponseField name="api_client.client_id" type="string">
+      The OAuth `client_id` used to obtain the token.
+    </ResponseField>
+    <ResponseField name="api_client.scopes" type="string[]">
+      Scopes carried by the current access token.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json
+{
+  "seller": {
+    "id": "seller_7c9a1b2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d",
+    "name": "Loja do João",
+    "status": "active",
+    "default_currency": "BRL"
+  },
+  "api_client": {
+    "id": "client_1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+    "name": "Backend de produção",
+    "client_id": "mdc_live_9f8e7d6c5b4a",
+    "scopes": ["customers:read", "customers:write", "checkouts:write"]
+  }
+}
+```

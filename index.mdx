@@ -1,45 +1,43 @@
 ---
-title: "MoneyDev Developer Docs: Accept PIX, Boleto & Cards"
+title: "MoneyDev Developer Docs"
 sidebarTitle: "Home"
-description: "MoneyDev is Brazil's payments gateway. One REST API for PIX, boleto, and cards — with real-time webhooks, a full dashboard, and easy onboarding for devs."
+description: "MoneyDev is a payments gateway for Brazil. One REST API to model what you sell and collect Pix payments through a hosted checkout."
 ---
 
-Welcome to MoneyDev — the payments gateway built for Brazil. Whether you're launching an e-commerce store, a SaaS platform, or a marketplace, MoneyDev gives you a single, unified REST API to accept PIX instant payments, boleto bancário, and credit and debit cards from Brazilian customers, with everything you need to go live quickly and scale confidently.
+Welcome to MoneyDev — a payments gateway built for Brazil. Its REST API lets you register customers, model what you sell as products and offers, and open hosted checkout sessions where buyers pay with Pix.
 
 <CardGroup cols={2}>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Set up your account, grab your API keys, and process your first payment in under 5 minutes.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Token to paid checkout in a handful of `curl` calls.
   </Card>
   <Card title="API Reference" icon="code" href="/api-reference/overview">
-    Explore every endpoint, request parameter, and response object in the full API reference.
+    Every endpoint, request parameter, and response object.
   </Card>
-  <Card title="Payment Methods" icon="credit-card" href="/payment-methods/pix">
-    Learn how PIX, boleto, and credit cards work on the MoneyDev platform.
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    OAuth 2.0 client credentials, scopes, and token lifetime.
   </Card>
-  <Card title="Guides" icon="book-open" href="/guides/accept-payment">
-    Step-by-step guides for common integration scenarios and best practices.
+  <Card title="Errors" icon="triangle-exclamation" href="/api-reference/errors">
+    The error object, status codes, and request IDs.
   </Card>
 </CardGroup>
 
-## Get Up and Running
-
-Follow these four steps to go from zero to accepting live payments with MoneyDev.
+## How it works
 
 <Steps>
-  <Step title="Create Your Account">
-    Sign up at [dashboard.moneydev.com.br](https://dashboard.moneydev.com.br) to create your MoneyDev account. The process takes less than two minutes — no credit card required to start testing.
+  <Step title="Create an API client">
+    In the [Dashboard](https://dashboard.moneydev.com.br) → **API Keys**, create a client. You get a `client_id` and a `client_secret`.
   </Step>
-  <Step title="Get Your API Keys">
-    After signing in, navigate to **Dashboard → API Keys**. You'll find a pair of keys: a test key (prefixed `sk_test_`) for development and a live key (prefixed `sk_live_`) for production. Copy your test key to start building.
+  <Step title="Get an access token">
+    Exchange those credentials at `POST /oauth/token` for a Bearer access token (valid 15 minutes). See [Authentication](/api-reference/authentication).
   </Step>
-  <Step title="Make Your First Payment">
-    Send a `POST` request to `https://api.moneydev.com.br/v1/payments` with your API key in the `Authorization` header and a JSON body describing the charge. The [Quick Start](/quickstart) guide walks you through a complete PIX payment example.
+  <Step title="Model what you sell">
+    Create a [product](/api-reference/products/create) and an [offer](/api-reference/offers/create) — an offer is a price (one-time or recurring) for a product.
   </Step>
-  <Step title="Go Live">
-    Once you've tested your integration in the sandbox, swap your `sk_test_` key for your `sk_live_` key, complete the account verification in the dashboard, and you're ready to accept real payments from Brazilian customers.
+  <Step title="Open a checkout and collect payment">
+    [Create a checkout](/api-reference/checkouts/create) for an offer, redirect the buyer to its `checkout_url`, and poll the checkout until `status` is `completed`.
   </Step>
 </Steps>
 
 <Note>
-  MoneyDev provides a full **sandbox environment** for testing. All requests made with a `sk_test_` API key are processed in the sandbox — no real money moves and no actual PIX or boleto transactions are created. Use the sandbox freely during development before switching to your live key.
+  The developer API covers customers, products, offers, and checkouts. Payment itself happens on the hosted checkout page at `pay.moneydev.com.br`, backed by Pix.
 </Note>

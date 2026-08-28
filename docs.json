@@ -62,37 +62,51 @@
         "tab": "API Reference",
         "groups": [
           {
-            "group": "Overview",
+            "group": "Introduction",
             "pages": [
               "api-reference/overview",
               "api-reference/authentication",
-              "api-reference/pagination",
-              "api-reference/errors"
+              "api-reference/errors",
+              "api-reference/pagination"
             ]
           },
           {
-            "group": "Payments",
+            "group": "Account",
             "pages": [
-              "api-reference/payments/create",
-              "api-reference/payments/retrieve",
-              "api-reference/payments/list",
-              "api-reference/payments/refund"
+              "api-reference/me"
             ]
           },
           {
             "group": "Customers",
             "pages": [
               "api-reference/customers/create",
-              "api-reference/customers/retrieve",
-              "api-reference/customers/update",
-              "api-reference/customers/list"
+              "api-reference/customers/list",
+              "api-reference/customers/retrieve"
             ]
           },
           {
-            "group": "Webhooks",
+            "group": "Products",
             "pages": [
-              "api-reference/webhooks/overview",
-              "api-reference/webhooks/events"
+              "api-reference/products/create",
+              "api-reference/products/list",
+              "api-reference/products/retrieve"
+            ]
+          },
+          {
+            "group": "Offers",
+            "pages": [
+              "api-reference/offers/create",
+              "api-reference/offers/list",
+              "api-reference/offers/retrieve",
+              "api-reference/offers/update"
+            ]
+          },
+          {
+            "group": "Checkouts",
+            "pages": [
+              "api-reference/checkouts/create",
+              "api-reference/checkouts/list",
+              "api-reference/checkouts/retrieve"
             ]
           }
         ]

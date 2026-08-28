@@ -1,177 +1,88 @@
 ---
-title: "MoneyDev API Errors: Status Codes and Error Objects"
+title: "Errors"
 sidebarTitle: "Errors"
-description: "MoneyDev API errors include a code, message, param, and details field. See HTTP status codes and examples for 400, 401, 404, 422, 429, and 500 responses."
+description: "The MoneyDev API error object, HTTP status codes, error types, and how to use request IDs."
 ---
 
-When the MoneyDev API cannot fulfill a request, it returns an HTTP status code in the `4xx` or `5xx` range alongside a structured JSON error object. Your integration should always inspect both the HTTP status and the `error.code` field to determine the correct recovery action.
-
-## Error Object
-
-Every error response has the following structure:
+When a `/v1` request fails, MoneyDev returns a `4xx` or `5xx` status and a JSON body with a single `error` object.
 
 ```json
 {
   "error": {
-    "code": "validation_error",
-    "message": "The amount must be a positive integer.",
-    "param": "amount",
-    "details": [
-      {
-        "field": "amount",
-        "issue": "Must be greater than 0."
-      }
-    ]
+    "type": "invalid_request_error",
+    "code": "invalid_customer_id",
+    "message": "O ID do cliente é inválido.",
+    "param": "customer_id",
+    "request_id": "req-a1b2c3d4"
   }
 }
 ```
 
-<ResponseField name="error.code" type="string" required>
-  A machine-readable string identifying the error type. Use this field — not the HTTP status or the message — to drive programmatic error handling.
+<ResponseField name="error.type" type="string">
+  Broad category of the error. See [types](#error-types) below.
 </ResponseField>
 
-<ResponseField name="error.message" type="string" required>
-  A human-readable description of the error, suitable for logging and debugging. Do not display this string directly to end users without sanitising it first.
+<ResponseField name="error.code" type="string">
+  A stable, specific machine-readable string, e.g. `customer_email_already_exists`. Branch on this.
 </ResponseField>
 
-<ResponseField name="error.param" type="string | null">
-  The name of the request parameter that caused the error, if the error is attributable to a single field. `null` when the error is not parameter-specific.
+<ResponseField name="error.message" type="string">
+  A human-readable explanation, in Brazilian Portuguese. For end users where helpful, but log it — do not pattern-match on it.
 </ResponseField>
 
-<ResponseField name="error.details" type="array | null">
-  An array of objects providing per-field validation detail. Each object contains a `field` (string) and an `issue` (string). `null` when there are no per-field details.
+<ResponseField name="error.param" type="string">
+  Present when the error is tied to one input field. Dotted for nested fields, e.g. `default_offer.amount_minor`.
 </ResponseField>
 
-## HTTP Status Codes
-
-| Status | Meaning | When you see it |
-|---|---|---|
-| `200 OK` | Success | The request succeeded and the response body contains the resource. |
-| `201 Created` | Resource created | A `POST` request successfully created a new resource. |
-| `400 Bad Request` | Malformed request | The request body is invalid JSON or a required parameter is missing. |
-| `401 Unauthorized` | Authentication failed | The API key is missing, malformed, or revoked. |
-| `404 Not Found` | Resource not found | The requested resource ID does not exist or is not accessible with your key. |
-| `409 Conflict` | Idempotency conflict | The same `Idempotency-Key` was used with different request parameters. |
-| `422 Unprocessable Entity` | Validation error | The request was well-formed but failed business-rule validation (e.g. insufficient funds). |
-| `429 Too Many Requests` | Rate limit exceeded | Your integration has exceeded 1 000 requests per minute. |
-| `500 Internal Server Error` | Server error | An unexpected error occurred on MoneyDev's servers. |
-
-## Error Examples
-
-### 400 — Validation Error
-
-Returned when a required field is missing or a value has the wrong type.
-
-```json
-{
-  "error": {
-    "code": "validation_error",
-    "message": "The amount must be a positive integer.",
-    "param": "amount",
-    "details": [
-      {
-        "field": "amount",
-        "issue": "Must be greater than 0."
-      }
-    ]
-  }
-}
-```
-
-### 401 — Unauthorized
-
-Returned when the API key is missing, malformed, or revoked. See the [authentication guide](/api-reference/authentication) for troubleshooting steps.
-
-```json
-{
-  "error": {
-    "code": "unauthorized",
-    "message": "Invalid API key provided.",
-    "param": null,
-    "details": null
-  }
-}
-```
-
-### 404 — Not Found
-
-Returned when you request a resource that does not exist or belongs to a different account.
-
-```json
-{
-  "error": {
-    "code": "not_found",
-    "message": "No payment with ID pay_abc123 was found.",
-    "param": "id",
-    "details": null
-  }
-}
-```
-
-### 422 — Unprocessable Entity
-
-Returned when the request is well-formed but fails a business rule — for example, attempting to capture a payment that has already been refunded or charge an amount that exceeds the card limit.
-
-```json
-{
-  "error": {
-    "code": "insufficient_funds",
-    "message": "The card was declined due to insufficient funds.",
-    "param": null,
-    "details": null
-  }
-}
-```
-
-### 429 — Rate Limit Exceeded
-
-Returned when your integration exceeds 1 000 requests per minute. Wait until the window resets (indicated by `X-RateLimit-Reset`) before retrying.
-
-```json
-{
-  "error": {
-    "code": "rate_limit_exceeded",
-    "message": "Too many requests. Please retry after 1 second.",
-    "param": null,
-    "details": null
-  }
-}
-```
-
-### 500 — Internal Server Error
-
-Returned when an unexpected error occurs on MoneyDev's servers. These errors are transient — retry the request using exponential backoff with your original `Idempotency-Key`.
-
-```json
-{
-  "error": {
-    "code": "internal_server_error",
-    "message": "An unexpected error occurred. Please try again or contact support if the issue persists.",
-    "param": null,
-    "details": null
-  }
-}
-```
-
-## Idempotency Errors
-
-If you send a request using an `Idempotency-Key` that was already used for a **different** set of parameters, the API returns `409 Conflict`:
-
-```json
-{
-  "error": {
-    "code": "idempotency_conflict",
-    "message": "This Idempotency-Key was used with different request parameters.",
-    "param": "Idempotency-Key",
-    "details": null
-  }
-}
-```
-
-To resolve this, generate a fresh UUID as the `Idempotency-Key` and resend the request with the intended parameters. Never reuse a key across logically different operations.
-
-## 5xx Errors and Retries
+<ResponseField name="error.request_id" type="string">
+  Identifier for this request, also returned as the `X-Request-Id` response header. Quote it when contacting support.
+</ResponseField>
 
 <Note>
-  `5xx` errors indicate a transient problem on MoneyDev's infrastructure and are safe to retry. Use an **exponential backoff** strategy — for example, retry after 1 s, 2 s, 4 s, 8 s — and include your original `Idempotency-Key` on each retry attempt so that the operation is not duplicated once the server recovers. If `5xx` errors persist for more than a few minutes, check the [MoneyDev Status Page](https://status.moneydev.com.br) for ongoing incidents.
+  `POST /oauth/token` does not use this shape. Its failures follow the OAuth spec: `{ "error": "...", "error_description": "..." }`. See [Authentication](/api-reference/authentication#token-endpoint-errors).
 </Note>
+
+## Error types
+
+| `type` | Status | Meaning |
+|---|---|---|
+| `authentication_error` | `401` | Missing, invalid, expired, or revoked access token |
+| `authorization_error` | `403` | The token is valid but lacks the required scope |
+| `invalid_request_error` | `400` | Malformed request — bad JSON, failed validation, an unparseable ID or cursor |
+| `not_found_error` | `404` | The resource does not exist, or is not visible to your account |
+| `conflict_error` | `409` | The request collides with existing state, e.g. a duplicate unique value |
+| `api_error` | `500` | Something failed on our side. Safe to retry with backoff |
+
+## Common codes
+
+| `code` | Type | Notes |
+|---|---|---|
+| `missing_access_token` | `authentication_error` | No `Authorization: Bearer` header |
+| `invalid_access_token` | `authentication_error` | Token rejected |
+| `insufficient_scope` | `authorization_error` | Token missing the endpoint's scope |
+| `invalid_request` | `invalid_request_error` | Schema validation failed; `param` points at the field |
+| `invalid_cursor` | `invalid_request_error` | `starting_after` is not a valid ID for this list |
+| `customer_email_already_exists` | `conflict_error` | A customer with that email already exists for your account |
+| `checkout_external_id_already_exists` | `conflict_error` | `external_id` already used on another checkout |
+
+Resource-specific codes (`customer_not_found`, `offer_not_found`, `recurring_checkout_not_supported`, …) are listed on each endpoint page.
+
+## Validation errors
+
+Request bodies are schema-validated before any work happens. A failure returns `400` with `code: "invalid_request"` and `param` set to the offending field path:
+
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_request",
+    "message": "body/email must match format \"email\"",
+    "param": "email",
+    "request_id": "req-a1b2c3d4"
+  }
+}
+```
+
+## Retrying
+
+Retry `500` (`api_error`) and the OAuth `503` (`temporarily_unavailable`) with exponential backoff. Do not blindly retry `4xx` — fix the request first. For safe retries of `POST /v1/checkouts`, set an `external_id`: a repeat with the same value returns `checkout_external_id_already_exists` instead of creating a second session.

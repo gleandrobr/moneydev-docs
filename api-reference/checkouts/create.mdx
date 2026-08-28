@@ -1,0 +1,137 @@
+---
+title: "Create a checkout"
+sidebarTitle: "Create checkout"
+description: "Open a hosted checkout session for an offer and get the URL to send the buyer to."
+---
+
+<Info>
+  `POST /v1/checkouts` &nbsp;·&nbsp; Requires scope `checkouts:write`
+</Info>
+
+Opens a checkout session for one offer. The response carries a `checkout_url` — the hosted page where the buyer pays with Pix. When they finish, the session's `status` becomes `completed`.
+
+<Note>
+  Recurring offers are not supported in checkout yet — a `recurring` offer returns `400` (`recurring_checkout_not_supported`). Sessions expire 24 hours after creation.
+</Note>
+
+## Body parameters
+
+<ParamField body="offer_id" type="string" required>
+  The offer to sell. Must be an active offer on an active product.
+</ParamField>
+
+<ParamField body="customer_id" type="string">
+  An existing customer (`cus_…`) to attach. Must be active.
+</ParamField>
+
+<ParamField body="external_id" type="string">
+  Your own reference for this checkout, 1–255 characters. Unique per account — reuse it to make `POST /v1/checkouts` safe to retry (a repeat returns `409` rather than a second session).
+</ParamField>
+
+<ParamField body="success_url" type="string">
+  Where the hosted page sends the buyer after payment. `http`/`https`, up to 2048 characters.
+</ParamField>
+
+<ParamField body="cancel_url" type="string">
+  Where the buyer goes if they abandon the checkout.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Arbitrary key–value pairs, echoed back on the checkout object.
+</ParamField>
+
+## Request
+
+```bash cURL
+curl --request POST https://api.moneydev.com.br/v1/checkouts \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "offer_id": "offer_a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "customer_id": "cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d",
+    "external_id": "order_1042",
+    "success_url": "https://loja.example.com/pedido/1042/ok",
+    "cancel_url": "https://loja.example.com/pedido/1042"
+  }'
+```
+
+## Response
+
+`201 Created` with the [checkout object](#checkout-object). Redirect the buyer to `checkout_url`.
+
+```json
+{
+  "id": "checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c",
+  "object": "checkout",
+  "customer_id": "cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d",
+  "external_id": "order_1042",
+  "mode": "payment",
+  "status": "open",
+  "currency": "BRL",
+  "amount_total_minor": 49900,
+  "checkout_url": "https://pay.moneydev.com.br/c/8Xr2v9Qk1mNpZ...",
+  "success_url": "https://loja.example.com/pedido/1042/ok",
+  "cancel_url": "https://loja.example.com/pedido/1042",
+  "metadata": {},
+  "line_items": [
+    {
+      "id": "item_2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+      "object": "checkout_line_item",
+      "product_id": "prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+      "offer_id": "offer_a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+      "name": "Plano Pro",
+      "description": "Acesso completo por 12 meses",
+      "offer_name": "Anual",
+      "quantity": 1,
+      "currency": "BRL",
+      "unit_amount_minor": 49900,
+      "total_amount_minor": 49900,
+      "type": "one_time",
+      "billing_interval": null,
+      "interval_count": null,
+      "metadata": {}
+    }
+  ],
+  "expires_at": "2026-08-29T13:15:00.000Z",
+  "completed_at": null,
+  "created_at": "2026-08-28T13:15:00.000Z",
+  "updated_at": "2026-08-28T13:15:00.000Z"
+}
+```
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_offer_id` | `offer_id` isn't a valid `offer_` ID |
+| `400` | `invalid_customer_id` | `customer_id` isn't a valid `cus_` ID |
+| `400` | `invalid_external_id` | `external_id` was sent empty |
+| `400` | `invalid_success_url` / `invalid_cancel_url` | URL isn't `http`/`https` |
+| `400` | `recurring_checkout_not_supported` | The offer is `recurring` |
+| `404` | `offer_not_found` | Offer missing, inactive, archived, or its product isn't active |
+| `404` | `customer_not_found` | `customer_id` given but no active customer matches |
+| `409` | `checkout_external_id_already_exists` | `external_id` already used on another checkout |
+
+## Checkout object
+
+<ResponseField name="id" type="string">Checkout ID, prefixed `checkout_`.</ResponseField>
+<ResponseField name="object" type="string">Always `"checkout"`.</ResponseField>
+<ResponseField name="customer_id" type="string | null">Attached customer, or `null`.</ResponseField>
+<ResponseField name="external_id" type="string | null">Your reference, or `null`.</ResponseField>
+<ResponseField name="mode" type="string">`payment`.</ResponseField>
+<ResponseField name="status" type="string">
+  `open`, `completed`, `expired`, or `canceled`. Reads auto-expire an `open` session past `expires_at`.
+</ResponseField>
+<ResponseField name="currency" type="string">ISO 4217 currency.</ResponseField>
+<ResponseField name="amount_total_minor" type="integer">Total in minor units.</ResponseField>
+<ResponseField name="checkout_url" type="string">Hosted page URL for the buyer.</ResponseField>
+<ResponseField name="success_url" type="string | null">Post-payment redirect, or `null`.</ResponseField>
+<ResponseField name="cancel_url" type="string | null">Abandon redirect, or `null`.</ResponseField>
+<ResponseField name="metadata" type="object">Your metadata.</ResponseField>
+<ResponseField name="line_items" type="array">
+  The items being sold. Each has `id` (`item_…`), `product_id`, `offer_id`, `name`, `description`, `offer_name`, `quantity`, `currency`, `unit_amount_minor`, `total_amount_minor`, `type`, `billing_interval`, `interval_count`, and `metadata`.
+</ResponseField>
+<ResponseField name="expires_at" type="string">ISO 8601 expiry (24 h after creation).</ResponseField>
+<ResponseField name="completed_at" type="string | null">ISO 8601 completion time, or `null`.</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>

@@ -1,0 +1,128 @@
+---
+title: "Create a product"
+sidebarTitle: "Create product"
+description: "Create a product and its default offer in one call."
+---
+
+<Info>
+  `POST /v1/products` &nbsp;·&nbsp; Requires scope `products:write`
+</Info>
+
+A **product** is something you sell. Every product has one or more **offers** — priced ways to buy it. This endpoint creates the product and its first offer together; that offer becomes the default.
+
+## Body parameters
+
+<ParamField body="name" type="string" required>
+  Product name, 1–160 characters.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Up to 2000 characters. Defaults to an empty string.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Arbitrary key–value pairs for your own use.
+</ParamField>
+
+<ParamField body="default_offer" type="object" required>
+  The product's first offer. Same shape as [Create an offer](/api-reference/offers/create#body-parameters), minus `is_default`.
+
+  <Expandable title="default_offer properties" defaultOpen>
+    <ParamField body="default_offer.amount_minor" type="integer" required>
+      Price in minor units (centavos). `1`–`99999999999`.
+    </ParamField>
+    <ParamField body="default_offer.currency" type="string" required>
+      Uppercase ISO 4217, e.g. `BRL`.
+    </ParamField>
+    <ParamField body="default_offer.name" type="string">
+      Offer label, 1–160 characters. Defaults to `"Padrão"`.
+    </ParamField>
+    <ParamField body="default_offer.compare_at_amount_minor" type="integer">
+      A struck-through reference price. Must be `≥ amount_minor`.
+    </ParamField>
+    <ParamField body="default_offer.type" type="string" default="one_time">
+      `one_time` or `recurring`.
+    </ParamField>
+    <ParamField body="default_offer.billing_interval" type="string">
+      `day`, `week`, `month`, or `year`. Required when `type` is `recurring`; not allowed when `one_time`.
+    </ParamField>
+    <ParamField body="default_offer.interval_count" type="integer">
+      Intervals between charges, `1`–`999`. Recurring only; defaults to `1`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Request
+
+```bash cURL
+curl --request POST https://api.moneydev.com.br/v1/products \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "name": "Plano Pro",
+    "description": "Acesso completo por 12 meses",
+    "default_offer": {
+      "name": "Anual",
+      "amount_minor": 49900,
+      "currency": "BRL"
+    }
+  }'
+```
+
+## Response
+
+`201 Created` with the [product object](#product-object). `default_offer` is the [offer](/api-reference/offers/create#offer-object) just created.
+
+```json
+{
+  "id": "prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+  "object": "product",
+  "name": "Plano Pro",
+  "description": "Acesso completo por 12 meses",
+  "status": "active",
+  "metadata": {},
+  "default_offer": {
+    "id": "offer_a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+    "object": "offer",
+    "product_id": "prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+    "name": "Anual",
+    "lookup_key": "offer_a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d",
+    "amount_minor": 49900,
+    "compare_at_amount_minor": null,
+    "currency": "BRL",
+    "type": "one_time",
+    "billing_interval": null,
+    "interval_count": null,
+    "is_default": true,
+    "active": true,
+    "created_at": "2026-08-28T13:05:00.000Z",
+    "updated_at": "2026-08-28T13:05:00.000Z"
+  },
+  "created_at": "2026-08-28T13:05:00.000Z",
+  "updated_at": "2026-08-28T13:05:00.000Z"
+}
+```
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_request` | Validation failed; `param` names the field |
+| `400` | `invalid_product_name` | `name` is empty after trimming |
+| `400` | `invalid_compare_at_amount` | `default_offer.compare_at_amount_minor` is below `amount_minor` |
+| `400` | `billing_interval_required` | `default_offer.type` is `recurring` with no `billing_interval` |
+| `400` | `invalid_one_time_billing` | A `one_time` offer set `billing_interval` or `interval_count` |
+
+## Product object
+
+<ResponseField name="id" type="string">Product ID, prefixed `prod_`.</ResponseField>
+<ResponseField name="object" type="string">Always `"product"`.</ResponseField>
+<ResponseField name="name" type="string">Product name.</ResponseField>
+<ResponseField name="description" type="string">Description, or `""`.</ResponseField>
+<ResponseField name="status" type="string">`active` or `archived`.</ResponseField>
+<ResponseField name="metadata" type="object">Your metadata.</ResponseField>
+<ResponseField name="default_offer" type="object | null">
+  The current default [offer](/api-reference/offers/create#offer-object), or `null` if none is active.
+</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>

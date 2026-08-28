@@ -1,180 +1,90 @@
 ---
-title: "Create a New Customer — Reusable Profile for Payments"
-sidebarTitle: "Create Customer"
-description: "Create a reusable customer profile with name, email, CPF or CNPJ, phone, and address. Reference the customer by ID on every future payment."
+title: "Create a customer"
+sidebarTitle: "Create customer"
+description: "Create a reusable customer record you can attach to checkout sessions."
 ---
 
-Use this endpoint to create a reusable customer profile. Storing customers in MoneyDev lets you reference them by ID when creating payments, avoiding the need to re-send personal details on every request. Customer profiles also serve as the anchor for saving tokenized payment methods, viewing payment history, and sending automatic receipts by email.
+<Info>
+  `POST /v1/customers` &nbsp;·&nbsp; Requires scope `customers:write`
+</Info>
 
-<Note>
-  **CPF vs. CNPJ:** Use `cpf` for individual customers (Pessoa Física) and `cnpj` for business customers (Pessoa Jurídica). At least one tax ID is required for PIX and boleto payments. You cannot set both `cpf` and `cnpj` on the same customer.
-</Note>
+Creates a customer for your account. Attach one to a [checkout](/api-reference/checkouts/create) with `customer_id` so you don't resend buyer details each time.
 
-## Endpoint
-
-```
-POST https://api.moneydev.com.br/v1/customers
-```
-
-## Request
-
-### Headers
-
-| Header | Value |
-|---|---|
-| `Authorization` | `Bearer YOUR_API_KEY` |
-| `Content-Type` | `application/json` |
-
-### Body Parameters
+## Body parameters
 
 <ParamField body="name" type="string" required>
-  The customer's full name (individual) or legal company name (business).
+  Customer's full name or company name. 1–160 characters.
 </ParamField>
 
 <ParamField body="email" type="string" required>
-  The customer's email address. Must be a valid email format. MoneyDev uses this to send payment receipts and boleto links.
-</ParamField>
-
-<ParamField body="cpf" type="string">
-  The customer's individual tax ID (CPF), digits only — no dots or dashes (e.g., `"12345678901"`). Use for individual customers (Pessoa Física). Required for PIX and boleto payments if `cnpj` is not provided.
-</ParamField>
-
-<ParamField body="cnpj" type="string">
-  The customer's company tax ID (CNPJ), digits only — no formatting characters (e.g., `"12345678000195"`). Use for business customers (Pessoa Jurídica). Required for PIX and boleto payments if `cpf` is not provided.
+  Valid email address, up to 320 characters. Stored lowercased. Must be unique within your account.
 </ParamField>
 
 <ParamField body="phone" type="string">
-  The customer's phone number in **E.164 format** (e.g., `"+5511999999999"`). The country code `+55` is required for Brazilian numbers.
+  Phone number, 1–32 characters. E.164 (`+5511999999999`) recommended.
 </ParamField>
 
-<ParamField body="address" type="object">
-  The customer's billing or delivery address.
-
-  <Expandable title="address fields">
-    <ParamField body="address.street" type="string">
-      Street name (e.g., `"Avenida Paulista"`).
-    </ParamField>
-    <ParamField body="address.number" type="string">
-      Street number (e.g., `"1000"`).
-    </ParamField>
-    <ParamField body="address.complement" type="string">
-      Optional address complement such as apartment or suite number (e.g., `"Apto 42"`).
-    </ParamField>
-    <ParamField body="address.district" type="string">
-      Neighborhood or district (e.g., `"Bela Vista"`).
-    </ParamField>
-    <ParamField body="address.city" type="string">
-      City name (e.g., `"São Paulo"`).
-    </ParamField>
-    <ParamField body="address.state" type="string">
-      Two-letter Brazilian state abbreviation (e.g., `"SP"`, `"RJ"`, `"MG"`).
-    </ParamField>
-    <ParamField body="address.zip_code" type="string">
-      Brazilian postal code (CEP), digits only (e.g., `"01310100"`).
-    </ParamField>
-    <ParamField body="address.country" type="string">
-      ISO 3166-1 alpha-2 country code. Defaults to `"BR"`.
-    </ParamField>
-  </Expandable>
+<ParamField body="tax_id" type="string">
+  CPF or CNPJ, 1–32 characters. Sent as-is — digits only or formatted.
 </ParamField>
 
 <ParamField body="metadata" type="object">
-  A set of key-value pairs for your own internal reference (e.g., your database user ID). Keys and values must be strings. Not visible to the customer.
+  Arbitrary key–value pairs for your own use. Returned on every representation of the customer.
 </ParamField>
 
-## Code Example
+Unknown fields cause a `400` (`invalid_request`).
+
+## Request
 
 ```bash cURL
-curl --request POST \
-  --url https://api.moneydev.com.br/v1/customers \
-  --header 'Authorization: Bearer YOUR_API_KEY' \
-  --header 'Content-Type: application/json' \
+curl --request POST https://api.moneydev.com.br/v1/customers \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header "Content-Type: application/json" \
   --data '{
     "name": "João da Silva",
-    "email": "joao.silva@email.com",
-    "cpf": "12345678901",
+    "email": "joao.silva@example.com",
     "phone": "+5511999999999",
-    "address": {
-      "street": "Avenida Paulista",
-      "number": "1000",
-      "complement": "Apto 42",
-      "district": "Bela Vista",
-      "city": "São Paulo",
-      "state": "SP",
-      "zip_code": "01310100",
-      "country": "BR"
-    },
-    "metadata": {
-      "user_id": "usr_789",
-      "plan": "pro"
-    }
+    "tax_id": "12345678909",
+    "metadata": { "user_id": "usr_789" }
   }'
 ```
 
 ## Response
 
-### Response Fields
-
-<ResponseField name="id" type="string">
-  Unique customer identifier with the prefix `cus_`. Store this ID to reference the customer in future API calls.
-</ResponseField>
-
-<ResponseField name="name" type="string">
-  The customer's full name or company name.
-</ResponseField>
-
-<ResponseField name="email" type="string">
-  The customer's email address.
-</ResponseField>
-
-<ResponseField name="cpf" type="string">
-  The stored CPF, if provided. `null` otherwise.
-</ResponseField>
-
-<ResponseField name="cnpj" type="string">
-  The stored CNPJ, if provided. `null` otherwise.
-</ResponseField>
-
-<ResponseField name="phone" type="string">
-  The customer's phone number in E.164 format, if provided. `null` otherwise.
-</ResponseField>
-
-<ResponseField name="address" type="object">
-  The customer's address object, if provided. Contains `street`, `number`, `complement`, `district`, `city`, `state`, `zip_code`, and `country`. `null` if no address was stored.
-</ResponseField>
-
-<ResponseField name="metadata" type="object">
-  The metadata object attached at creation. Returns an empty object `{}` if none was provided.
-</ResponseField>
-
-<ResponseField name="created_at" type="string">
-  ISO 8601 timestamp of when the customer was created.
-</ResponseField>
-
-## Example Response
+`201 Created` with the [customer object](#customer-object).
 
 ```json
 {
-  "id": "cus_01HABC789XYZ",
+  "id": "cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d",
+  "object": "customer",
   "name": "João da Silva",
-  "email": "joao.silva@email.com",
-  "cpf": "12345678901",
-  "cnpj": null,
+  "email": "joao.silva@example.com",
   "phone": "+5511999999999",
-  "address": {
-    "street": "Avenida Paulista",
-    "number": "1000",
-    "complement": "Apto 42",
-    "district": "Bela Vista",
-    "city": "São Paulo",
-    "state": "SP",
-    "zip_code": "01310100",
-    "country": "BR"
-  },
-  "metadata": {
-    "user_id": "usr_789",
-    "plan": "pro"
-  },
-  "created_at": "2025-07-14T10:00:00Z"
+  "tax_id": "12345678909",
+  "status": "active",
+  "metadata": { "user_id": "usr_789" },
+  "created_at": "2026-08-28T13:00:00.000Z",
+  "updated_at": "2026-08-28T13:00:00.000Z"
 }
 ```
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_request` | Validation failed; `param` names the field |
+| `400` | `invalid_customer_name` | `name` is empty after trimming |
+| `409` | `customer_email_already_exists` | Another customer on your account uses that email |
+
+## Customer object
+
+<ResponseField name="id" type="string">Customer ID, prefixed `cus_`.</ResponseField>
+<ResponseField name="object" type="string">Always `"customer"`.</ResponseField>
+<ResponseField name="name" type="string">Full or company name.</ResponseField>
+<ResponseField name="email" type="string">Email address, lowercased.</ResponseField>
+<ResponseField name="phone" type="string | null">Phone number, or `null`.</ResponseField>
+<ResponseField name="tax_id" type="string | null">CPF or CNPJ, or `null`.</ResponseField>
+<ResponseField name="status" type="string">`active` or `inactive`. New customers are `active`.</ResponseField>
+<ResponseField name="metadata" type="object">Your metadata. `{}` if none was set.</ResponseField>
+<ResponseField name="created_at" type="string">ISO 8601 creation timestamp.</ResponseField>
+<ResponseField name="updated_at" type="string">ISO 8601 timestamp of the last change.</ResponseField>

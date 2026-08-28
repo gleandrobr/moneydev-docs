@@ -1,0 +1,57 @@
+---
+title: "Update an offer"
+sidebarTitle: "Update offer"
+description: "Rename an offer, activate or deactivate it, or make it the product's default."
+---
+
+<Info>
+  `PATCH /v1/offers/{offerId}` &nbsp;·&nbsp; Requires scope `products:write`
+</Info>
+
+Updates mutable fields on an offer. Price, currency, and billing terms are immutable — create a new offer for a different price.
+
+## Path parameters
+
+<ParamField path="offerId" type="string" required>
+  The offer ID. Not a valid `offer_` ID → `400` (`invalid_offer_id`).
+</ParamField>
+
+## Body parameters
+
+Send at least one field.
+
+<ParamField body="name" type="string">
+  New label, 1–160 characters. Empty after trimming → `400` (`invalid_offer_name`).
+</ParamField>
+
+<ParamField body="active" type="boolean">
+  Enable or disable the offer for new checkouts.
+</ParamField>
+
+<ParamField body="is_default" type="boolean">
+  `true` promotes this offer to the product's default and demotes the previous one.
+</ParamField>
+
+## Request
+
+```bash cURL
+curl --request PATCH \
+  https://api.moneydev.com.br/v1/offers/offer_b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e \
+  --header "Authorization: Bearer $ACCESS_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{ "name": "Mensal (promo)", "is_default": true }'
+```
+
+## Response
+
+`200 OK` with the updated [offer object](/api-reference/offers/create#offer-object).
+
+## Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| `400` | `invalid_offer_id` | Path segment isn't a valid `offer_` ID |
+| `400` | `invalid_offer_name` | `name` was sent but is empty |
+| `404` | `offer_not_found` | No such offer, or it is archived |
+| `409` | `default_offer_cannot_be_disabled` | Tried to set `active: false` or `is_default: false` on the current default — promote another offer first |
+| `409` | `inactive_offer_cannot_be_default` | Tried to make an inactive offer the default without also sending `active: true` |

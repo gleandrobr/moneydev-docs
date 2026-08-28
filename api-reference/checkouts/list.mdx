@@ -1,0 +1,77 @@
+---
+title: "List checkouts"
+sidebarTitle: "List checkouts"
+description: "List your checkout sessions, newest first."
+---
+
+<Info>
+  `GET /v1/checkouts` &nbsp;·&nbsp; Requires scope `checkouts:read`
+</Info>
+
+Returns your checkout sessions, newest first, in a [list object](/api-reference/pagination). Any `open` session past its `expires_at` is marked `expired` before the results are returned.
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="20">
+  Records to return, `1`–`100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  A checkout ID (`checkout_…`) to page after.
+</ParamField>
+
+## Request
+
+```bash cURL
+curl "https://api.moneydev.com.br/v1/checkouts?limit=1" \
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+## Response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "checkout_7f8a9b0c-1d2e-4f3a-8b4c-5d6e7f8a9b0c",
+      "object": "checkout",
+      "customer_id": "cus_9b2c4f1a-3d5e-4a7b-8c9d-1e2f3a4b5c6d",
+      "external_id": "order_1042",
+      "mode": "payment",
+      "status": "completed",
+      "currency": "BRL",
+      "amount_total_minor": 49900,
+      "checkout_url": "https://pay.moneydev.com.br/c/8Xr2v9Qk1mNpZ...",
+      "success_url": "https://loja.example.com/pedido/1042/ok",
+      "cancel_url": "https://loja.example.com/pedido/1042",
+      "metadata": {},
+      "line_items": [
+        {
+          "id": "item_2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e",
+          "object": "checkout_line_item",
+          "product_id": "prod_4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a",
+          "offer_id": "offer_a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+          "name": "Plano Pro",
+          "description": "Acesso completo por 12 meses",
+          "offer_name": "Anual",
+          "quantity": 1,
+          "currency": "BRL",
+          "unit_amount_minor": 49900,
+          "total_amount_minor": 49900,
+          "type": "one_time",
+          "billing_interval": null,
+          "interval_count": null,
+          "metadata": {}
+        }
+      ],
+      "expires_at": "2026-08-29T13:15:00.000Z",
+      "completed_at": "2026-08-28T13:22:41.000Z",
+      "created_at": "2026-08-28T13:15:00.000Z",
+      "updated_at": "2026-08-28T13:22:41.000Z"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+```

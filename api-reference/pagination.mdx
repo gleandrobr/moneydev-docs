@@ -1,106 +1,68 @@
 ---
-title: "MoneyDev API Pagination: Cursors, Limit, and Navigation"
+title: "Pagination"
 sidebarTitle: "Pagination"
-description: "Navigate large result sets with MoneyDev cursor-based pagination. Use after, before, and limit parameters and loop through pages using the has_more field."
+description: "How MoneyDev list endpoints page results with limit and starting_after cursors."
 ---
 
-All MoneyDev list endpoints use **cursor-based pagination**. Rather than relying on numeric page offsets (which can produce inconsistent results as data changes), the API uses opaque cursors derived from resource IDs. This guarantees stable, consistent pages even when new records are created or deleted between requests.
+Every list endpoint (`GET /v1/customers`, `GET /v1/products`, `GET /v1/products/:id/offers`, `GET /v1/checkouts`) returns the same envelope and pages the same way.
 
-## Query Parameters
-
-<ParamField query="limit" type="integer" default="20">
-  Number of records to return per page. Accepts a value between `1` and `100`.
-</ParamField>
-
-<ParamField query="after" type="string">
-  Cursor for forward pagination. Pass the ID of the **last item** from the previous page to retrieve the next page of results.
-</ParamField>
-
-<ParamField query="before" type="string">
-  Cursor for backward pagination. Pass the ID of the **first item** from the current page to retrieve the previous page of results.
-</ParamField>
-
-## Response Envelope
-
-Every list response wraps results in a standard envelope:
+## List object
 
 ```json
 {
-  "data": [...],
-  "meta": {
-    "has_more": true,
-    "total": 1500,
-    "cursor": {
-      "after": "pay_abc123",
-      "before": "pay_xyz789"
-    }
-  }
+  "object": "list",
+  "data": [
+    { "id": "cus_2f...", "object": "customer", "...": "..." },
+    { "id": "cus_1a...", "object": "customer", "...": "..." }
+  ],
+  "has_more": true,
+  "next_cursor": "cus_1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
 }
 ```
 
-<ResponseField name="data" type="array" required>
-  The array of resource objects for the current page.
+<ResponseField name="object" type="string">
+  Always `"list"`.
 </ResponseField>
 
-<ResponseField name="meta.has_more" type="boolean" required>
-  `true` if additional pages exist after the current page; `false` if this is the last page.
+<ResponseField name="data" type="array">
+  The page of results, newest first (by creation time).
 </ResponseField>
 
-<ResponseField name="meta.total" type="integer" required>
-  Total number of records matching the query across all pages.
+<ResponseField name="has_more" type="boolean">
+  `true` when at least one more record exists after this page.
 </ResponseField>
 
-<ResponseField name="meta.cursor.after" type="string" required>
-  The ID of the last item on the current page. Pass this as the `after` query parameter to fetch the next page.
+<ResponseField name="next_cursor" type="string | null">
+  The ID to pass as `starting_after` for the next page. `null` when `has_more` is `false`.
 </ResponseField>
 
-<ResponseField name="meta.cursor.before" type="string" required>
-  The ID of the first item on the current page. Pass this as the `before` query parameter to fetch the previous page.
-</ResponseField>
+## Query parameters
 
-## Iterating All Pages
+<ParamField query="limit" type="integer" default="20">
+  How many records to return, `1`–`100`.
+</ParamField>
 
-The following example fetches every payment in your account by looping until `has_more` is `false`:
+<ParamField query="starting_after" type="string">
+  A resource ID from a previous page (typically `next_cursor`). The response starts with the record immediately after it. An ID that is malformed or does not belong to your account returns `400` with `code: "invalid_cursor"`.
+</ParamField>
 
-```javascript Node.js
-const BASE_URL = "https://api.moneydev.com.br/v1";
-const API_KEY  = "sk_live_yourkey";
+## Paging through every record
 
-async function fetchAllPayments() {
-  const allPayments = [];
-  let after = null;
-
+```javascript
+async function* allCustomers(token) {
+  let cursor;
   do {
-    const url = new URL(`${BASE_URL}/payments`);
+    const url = new URL("https://api.moneydev.com.br/v1/customers");
     url.searchParams.set("limit", "100");
-    if (after) {
-      url.searchParams.set("after", after);
-    }
+    if (cursor) url.searchParams.set("starting_after", cursor);
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        "Authorization": `Bearer ${API_KEY}`,
-        "Content-Type": "application/json",
-      },
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
     });
+    const page = await res.json();
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const { data, meta } = await response.json();
-    allPayments.push(...data);
-
-    after = meta.has_more ? meta.cursor.after : null;
-  } while (after !== null);
-
-  return allPayments;
+    yield* page.data;
+    cursor = page.next_cursor;
+  } while (cursor);
 }
-
-const payments = await fetchAllPayments();
-console.log(`Retrieved ${payments.length} payments.`);
 ```
-
-<Tip>
-  Set `limit=100` when you need to bulk-export or process large data sets. Fewer round-trips means lower latency and less risk of hitting rate limits. See the [rate limits section](/api-reference/overview#rate-limits) for per-minute request quotas.
-</Tip>
