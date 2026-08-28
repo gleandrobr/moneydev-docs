@@ -1,0 +1,316 @@
+---
+title: "Accepting Payments with MoneyDev: PIX, Boleto, and Card"
+sidebarTitle: "Accept Payment"
+description: "Step-by-step guide to accepting a payment with MoneyDev: create a customer, choose a payment method, and confirm the transaction via webhook."
+---
+
+MoneyDev makes it straightforward to accept payments from Brazilian customers — whether they prefer PIX, boleto, or credit card. This guide walks you through the complete payment flow, from registering a customer to fulfilling the order after confirmation.
+
+## Payment Flow Overview
+
+```text
+Merchant → MoneyDev API → Customer Pays → Webhook → Fulfil Order
+```
+
+1. **Merchant** sends a create-payment request to the MoneyDev API.
+2. **MoneyDev** returns the payment object with method-specific details (QR code, boleto URL, or redirect link).
+3. **Customer** completes the payment through their preferred method.
+4. **MoneyDev** fires a `payment.confirmed` webhook to your server.
+5. **Merchant** fulfils the order upon receiving and validating the webhook.
+
+---
+
+<Steps>
+
+### Create a Customer
+
+Before creating a payment, register the customer in MoneyDev. If the customer already exists, you can reuse their `id`.
+
+```bash
+POST https://api.moneydev.com.br/v1/customers
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Maria Silva",
+  "email": "maria.silva@email.com",
+  "tax_id": "123.456.789-09",
+  "phone": "+5511999999999",
+  "address": {
+    "street": "Rua das Flores",
+    "number": "42",
+    "city": "São Paulo",
+    "state": "SP",
+    "postal_code": "01310-100",
+    "country": "BR"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "cus_abc123",
+  "name": "Maria Silva",
+  "email": "maria.silva@email.com",
+  "tax_id": "123.456.789-09",
+  "created_at": "2024-01-15T10:00:00Z"
+}
+```
+
+Save the returned `id` (e.g. `cus_abc123`) — you will use it when creating a payment.
+
+### Create a Payment
+
+Create a payment by specifying the customer, amount (in centavos), and payment method. Use the tabs below to see the request body for each method.
+
+<Tabs>
+  <Tab title="PIX">
+    ```bash
+    POST https://api.moneydev.com.br/v1/payments
+    Authorization: Bearer YOUR_API_KEY
+    Content-Type: application/json
+    Idempotency-Key: order_789_pix
+    ```
+
+    ```json
+    {
+      "customer_id": "cus_abc123",
+      "amount": 10000,
+      "currency": "BRL",
+      "method": "pix",
+      "description": "Order #789"
+    }
+    ```
+
+    **Response:**
+
+    ```json
+    {
+      "id": "pay_xyz456",
+      "status": "pending",
+      "method": "pix",
+      "amount": 10000,
+      "currency": "BRL",
+      "pix": {
+        "qr_code": "00020101...",
+        "qr_code_url": "https://api.moneydev.com.br/v1/payments/pay_xyz456/qr-code",
+        "expires_at": "2024-01-15T11:00:00Z"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Boleto">
+    ```bash
+    POST https://api.moneydev.com.br/v1/payments
+    Authorization: Bearer YOUR_API_KEY
+    Content-Type: application/json
+    Idempotency-Key: order_789_boleto
+    ```
+
+    ```json
+    {
+      "customer_id": "cus_abc123",
+      "amount": 10000,
+      "currency": "BRL",
+      "method": "boleto",
+      "description": "Order #789",
+      "boleto": {
+        "due_date": "2024-01-18"
+      }
+    }
+    ```
+
+    **Response:**
+
+    ```json
+    {
+      "id": "pay_xyz456",
+      "status": "pending",
+      "method": "boleto",
+      "amount": 10000,
+      "currency": "BRL",
+      "boleto": {
+        "barcode": "34191.75124 34567.872139 61834.604002 8 00010000010000",
+        "url": "https://boleto.moneydev.com.br/pay_xyz456",
+        "due_date": "2024-01-18",
+        "pdf_url": "https://boleto.moneydev.com.br/pay_xyz456.pdf"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Credit Card">
+    ```bash
+    POST https://api.moneydev.com.br/v1/payments
+    Authorization: Bearer YOUR_API_KEY
+    Content-Type: application/json
+    Idempotency-Key: order_789_card
+    ```
+
+    ```json
+    {
+      "customer_id": "cus_abc123",
+      "amount": 10000,
+      "currency": "BRL",
+      "method": "credit_card",
+      "description": "Order #789",
+      "card_token": "tok_live_abc...",
+      "installments": 1
+    }
+    ```
+
+    **Response:**
+
+    ```json
+    {
+      "id": "pay_xyz456",
+      "status": "confirmed",
+      "method": "credit_card",
+      "amount": 10000,
+      "currency": "BRL",
+      "card": {
+        "brand": "visa",
+        "last4": "4242",
+        "installments": 1
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Present Payment Information to the Customer
+
+Once you receive the payment response, display the relevant details to your customer:
+
+- **PIX** — Render the `pix.qr_code_url` as an image, or display the raw `pix.qr_code` string so the customer can copy-paste it into their banking app. Inform them of the expiry time.
+- **Boleto** — Redirect the customer to `boleto.url` or display the `boleto.barcode`. You can also send the `boleto.pdf_url` by email.
+- **Credit card** — The payment is usually confirmed synchronously. Show a confirmation screen immediately once the response `status` is `confirmed`.
+
+### Handle the Webhook Confirmation
+
+MoneyDev sends a `payment.confirmed` event to your configured webhook endpoint when the payment clears. Always verify the event and use an idempotency check before fulfilling.
+
+**Sample webhook payload:**
+
+```json
+{
+  "event": "payment.confirmed",
+  "created_at": "2024-01-15T10:07:33Z",
+  "data": {
+    "id": "pay_xyz456",
+    "status": "confirmed",
+    "amount": 10000,
+    "currency": "BRL",
+    "customer_id": "cus_abc123",
+    "description": "Order #789",
+    "confirmed_at": "2024-01-15T10:07:30Z"
+  }
+}
+```
+
+**Recommended server-side handler:**
+
+```javascript
+app.post("/webhooks/moneydev", express.json(), async (req, res) => {
+  const { event, data } = req.body;
+
+  if (event === "payment.confirmed") {
+    const alreadyProcessed = await db.payments.findOne({ id: data.id, fulfilled: true });
+
+    if (!alreadyProcessed) {
+      await fulfilOrder(data.description, data.id);
+      await db.payments.update({ id: data.id }, { fulfilled: true });
+    }
+  }
+
+  res.sendStatus(200);
+});
+```
+
+### Fulfil the Order
+
+With confirmation in hand, release the product, provision the service, or ship the goods. Always base fulfilment on the webhook event — never on the customer's browser redirect alone.
+
+</Steps>
+
+---
+
+## Full End-to-End Example (Node.js)
+
+The snippet below brings all the steps together into a single flow using the native `fetch` API.
+
+```javascript
+const API_KEY = process.env.MONEYDEV_API_KEY;
+const BASE_URL = "https://api.moneydev.com.br/v1";
+
+async function moneydev(path, body, idempotencyKey) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
+      ...(idempotencyKey && { "Idempotency-Key": idempotencyKey }),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(`MoneyDev API error: ${error.message}`);
+  }
+
+  return res.json();
+}
+
+async function acceptPayment(orderId, customerData, amountInCentavos) {
+  // 1. Create the customer
+  const customer = await moneydev("/customers", {
+    name: customerData.name,
+    email: customerData.email,
+    tax_id: customerData.taxId,
+    phone: customerData.phone,
+  });
+
+  console.log("Customer created:", customer.id);
+
+  // 2. Create a PIX payment
+  const payment = await moneydev(
+    "/payments",
+    {
+      customer_id: customer.id,
+      amount: amountInCentavos, // e.g. 10000 = R$100,00
+      currency: "BRL",
+      method: "pix",
+      description: `Order #${orderId}`,
+    },
+    `order_${orderId}_pix` // idempotency key
+  );
+
+  console.log("Payment created:", payment.id);
+  console.log("PIX QR Code URL:", payment.pix.qr_code_url);
+  console.log("Expires at:", payment.pix.expires_at);
+
+  return payment;
+}
+
+// Usage
+acceptPayment("789", {
+  name: "Maria Silva",
+  email: "maria@email.com",
+  taxId: "123.456.789-09",
+  phone: "+5511999999999",
+}, 10000);
+```
+
+---
+
+<Tip>
+  **Use idempotency keys to prevent duplicate payments.** Include an `Idempotency-Key` header with a unique value (such as your internal order ID) on every `POST /payments` request. If the same key is sent twice — for example, due to a network timeout and retry — MoneyDev returns the original payment object instead of creating a second charge.
+</Tip>
+
+<Note>
+  **Test mode is available.** Use a test API key (prefixed with `sk_test_`) to simulate payments without moving real money. Test PIX payments confirm automatically within seconds; test boletos can be manually confirmed via the MoneyDev dashboard. Swap in your live key (`sk_live_`) when you are ready for production.
+</Note>

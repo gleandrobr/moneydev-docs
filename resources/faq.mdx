@@ -1,0 +1,158 @@
+---
+title: "MoneyDev FAQ: Payments, Settlement, and Compliance"
+sidebarTitle: "FAQ"
+description: "Answers to the most common questions about MoneyDev: supported payment methods, settlement timelines, PCI compliance, and going live in production."
+---
+
+Find answers to the most common questions about integrating and operating with MoneyDev. If you don't find what you're looking for here, reach out to our support team — contact details are in the last item below.
+
+<AccordionGroup>
+
+  <Accordion title="What payment methods does MoneyDev support?">
+    MoneyDev supports the following payment methods:
+
+    - **Credit cards** — Visa, Mastercard, Elo, American Express, Hipercard, and Diners Club, with optional 3DS authentication.
+    - **Debit cards** — Visa Electron and Mastercard Debit, subject to issuer availability.
+    - **PIX** — instant bank transfer, available 24/7, funds settle in seconds.
+    - **Boleto Bancário** — bank slip with a configurable due date of 1–30 days.
+    - **PIX Parcelado** — instalment PIX, allowing customers to pay in up to 12 monthly instalments through their bank.
+
+    All methods are available via the same `/v1/payments` endpoint — you select the method by setting `payment_method` in your request body.
+  </Accordion>
+
+  <Accordion title="How long does it take to receive my funds?">
+    Settlement timelines depend on the payment method:
+
+    | Method | Settlement |
+    |---|---|
+    | PIX | Next business day (D+1) |
+    | Credit card — 1× | 30 calendar days (D+30) |
+    | Credit card — instalment | Per instalment, 30 days after each payment date |
+    | Debit card | Next business day (D+1) |
+    | Boleto | Next business day after confirmation (D+1) |
+
+    You can opt in to **Antecipação Automática** (automatic receivables advance) in the Dashboard to receive credit-card funds earlier for a small fee. Settlement is made to the Brazilian bank account registered in your MoneyDev account.
+  </Accordion>
+
+  <Accordion title="Is MoneyDev PCI compliant?">
+    Yes. MoneyDev is certified as a **PCI DSS Level 1** service provider — the highest level of compliance defined by the Payment Card Industry Data Security Standard. This means:
+
+    - Raw card data (PAN, CVV, expiry) is never stored on MoneyDev servers beyond the instant it is tokenised.
+    - All data in transit is encrypted with TLS 1.2 or higher.
+    - Annual on-site assessments are conducted by a Qualified Security Assessor (QSA).
+
+    When you collect card data using MoneyDev.js or our mobile SDKs, sensitive fields are tokenised in the customer's browser or device before they ever reach your server. This keeps your own systems out of PCI scope.
+  </Accordion>
+
+  <Accordion title="Can I accept payments in currencies other than BRL?">
+    MoneyDev processes all transactions in **Brazilian Real (BRL)**. You can display prices in another currency on your storefront, but the charge sent to MoneyDev must be in BRL. Currency conversion, if needed, is your responsibility.
+
+    For international customers paying with a foreign-issued card, the card network and the cardholder's bank handle the foreign-exchange conversion on their end — your settlement is always in BRL.
+  </Accordion>
+
+  <Accordion title="How do I handle chargebacks?">
+    When a cardholder disputes a charge with their bank, MoneyDev notifies you via a `payment.chargeback_opened` webhook event and places the disputed amount in a holding reserve. To contest the chargeback:
+
+    1. Log in to the **Dashboard → Disputes**.
+    2. Review the dispute details and deadline.
+    3. Upload supporting evidence (order confirmation, delivery proof, customer correspondence, etc.).
+    4. Submit before the deadline — typically **10 business days** from the notification date.
+
+    If you win the dispute, the held amount is released back to your balance. If you lose, the amount is refunded to the cardholder. MoneyDev also charges a chargeback fee regardless of outcome; see the [Pricing page](https://moneydev.com.br/precos) for current rates.
+
+    The best defence against chargebacks is strong fraud screening. Enable MoneyDev's **Risk Shield** feature in the Dashboard to apply machine-learning fraud scoring to every transaction.
+  </Accordion>
+
+  <Accordion title="What is the minimum and maximum payment amount?">
+    | Payment method | Minimum | Maximum |
+    |---|---|---|
+    | Credit / debit card | R$1,00 | R$50.000,00 per transaction |
+    | PIX | R$1,00 | R$999.999,99 per transaction |
+    | Boleto | R$5,00 | R$999.999,99 per document |
+
+    Amounts must be sent as integers in centavos — for example, R$19,90 is sent as `1990`. Requests outside these bounds return an `amount_too_small` or `amount_too_large` error. If you regularly need to process amounts above these limits, contact our sales team to discuss a higher limit agreement.
+  </Accordion>
+
+  <Accordion title="Do I need a CNPJ to use MoneyDev?">
+    You can sign up as either a **Pessoa Jurídica** (legal entity, CNPJ) or a **Pessoa Física** (individual, CPF). However, some features and higher processing limits are only available to legal entities. If you run a business, registering with your CNPJ is strongly recommended.
+
+    During onboarding you will be asked to submit KYC documents (identity document, proof of address, and — for legal entities — articles of incorporation). Approval typically takes one business day.
+  </Accordion>
+
+  <Accordion title="How do I go from sandbox to production?">
+    When you have tested all your payment flows and are confident in your integration, follow these steps to go live:
+
+    1. **Complete account verification** — ensure your KYC documents have been approved and your bank account is registered in the Dashboard.
+    2. **Swap your API key** — replace `sk_test_...` with your `sk_live_...` key. If you store it in an environment variable, update that variable in your production environment.
+    3. **Update your webhook endpoint** — register your production URL under **Developers → Webhooks** and verify ownership.
+    4. **Enable your live payment methods** — visit **Settings → Payment Methods** and activate the methods you want to offer.
+    5. **Process a real test transaction** — make a small live charge with your own card, verify it appears in the Dashboard, and refund it immediately.
+
+    There are no code changes required beyond swapping the key.
+  </Accordion>
+
+  <Accordion title="Does MoneyDev support international cards?">
+    Yes. MoneyDev accepts internationally-issued Visa, Mastercard, American Express, and Diners Club cards. The cardholder's bank handles foreign-exchange conversion and your settlement is always in BRL.
+
+    Some international cards require **3DS authentication**. MoneyDev handles the 3DS flow automatically when you use MoneyDev.js or a mobile SDK. If you use a server-side-only integration, set `three_d_secure: "when_required"` on your payment request and handle the `authentication_required` error by redirecting the customer to the `next_action.redirect_url` returned in the error response.
+
+    Note that fraud rates are generally higher for international cards. Enabling **Risk Shield** is especially recommended if you expect significant cross-border volume.
+  </Accordion>
+
+  <Accordion title="How do I get support if something goes wrong?">
+    MoneyDev offers several support channels:
+
+    - **Documentation** — you are already here. Search the docs or browse the sidebar for guides, API references, and code examples.
+    - **Dashboard chat** — click the **Help** button in the bottom-right corner of the Dashboard for live chat during business hours (Monday–Friday, 09:00–18:00 BRT).
+    - **Email support** — send a detailed description of your issue to [suporte@moneydev.com.br](mailto:suporte@moneydev.com.br). Include your account ID, the relevant payment IDs, and any request/response logs.
+    - **Emergency line** — for critical production outages, call **+55 11 4040-0000** (24/7 for accounts on Pro and Enterprise plans).
+    - **Status page** — check real-time API health and incident history at [status.moneydev.com.br](https://status.moneydev.com.br).
+
+    When contacting support, always include the `X-Request-Id` header value from the failing response — it lets our engineers locate the exact request in our logs instantly.
+  </Accordion>
+
+  <Accordion title="What is the difference between authorization and capture?">
+    **Authorization** reserves funds on the cardholder's card without moving money. **Capture** finalises the charge and triggers settlement.
+
+    By default, MoneyDev performs a combined **auth + capture** in a single step. If you need to reserve funds first and capture later (for example, in a ride-hailing or hotel scenario), use two-step payments:
+
+    ```bash
+    # Step 1 — Authorize only
+    curl -X POST https://api.moneydev.com.br/v1/payments \
+      -H "Authorization: Bearer sk_live_YOUR_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "amount": 15000,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "capture": false,
+        "card": { "token": "tok_xxxx" }
+      }'
+
+    # Step 2 — Capture when ready (up to 7 days later)
+    curl -X POST https://api.moneydev.com.br/v1/payments/{id}/capture \
+      -H "Authorization: Bearer sk_live_YOUR_KEY"
+    ```
+
+    An authorised but uncaptured payment has the status `authorized`. If you do not capture within **7 days**, the authorisation expires automatically and the hold on the customer's card is released.
+
+    You can also capture a partial amount (less than or equal to the authorised amount) by passing `amount` in the capture request body.
+  </Accordion>
+
+  <Accordion title="Can I integrate MoneyDev with my e-commerce platform?">
+    Yes. MoneyDev offers official plugins and extensions for the most popular platforms used in Brazil:
+
+    | Platform | Plugin |
+    |---|---|
+    | WooCommerce | [moneydev-woocommerce](https://wordpress.org/plugins/moneydev-woocommerce) |
+    | Shopify | Available in the Shopify App Store |
+    | VTEX | Available in the VTEX App Store |
+    | Magento 2 | [moneydev-magento2](https://github.com/moneydev/moneydev-magento2) |
+    | OpenCart | [moneydev-opencart](https://github.com/moneydev/moneydev-opencart) |
+
+    Each plugin is open-source and supports credit cards, PIX, and boleto out of the box. Installation guides are available in the plugin repositories.
+
+    For custom or headless storefronts, use the [REST API](/api-reference/overview) directly or the code examples throughout the documentation.
+  </Accordion>
+
+</AccordionGroup>

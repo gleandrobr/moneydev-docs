@@ -1,0 +1,242 @@
+---
+title: "MoneyDev Webhooks: Events, Signatures, and Retries"
+sidebarTitle: "Webhooks"
+description: "MoneyDev pushes real-time webhook events to your HTTPS endpoint when payment status changes. Learn how to configure, verify signatures, and handle retries."
+---
+
+MoneyDev uses **webhooks** to push real-time notifications to your server whenever something important happens — a payment is confirmed, a boleto expires, or a customer disputes a charge. Instead of polling the API repeatedly to check for status changes, you register an HTTPS endpoint and MoneyDev delivers the event directly to you within seconds of it occurring.
+
+## Why Webhooks Matter for Payments
+
+Payment networks are asynchronous. A customer scanning a PIX QR code on their phone, a boleto being paid at a bank branch, or a card authorization travelling through the network all happen outside your application's request cycle. Relying solely on your checkout redirect or a polling loop to detect these events leads to missed notifications, delayed order fulfilment, and poor customer experience.
+
+Webhooks solve this by inverting the model: MoneyDev calls you. Your endpoint receives the event, updates your order management system, triggers fulfilment, and returns a `200 OK` — all in near real time.
+
+## Registering a Webhook URL
+
+### Via the Dashboard
+
+<Steps>
+  <Step title="Open Webhook settings">
+    Log in to the [MoneyDev Dashboard](https://dashboard.moneydev.com.br), then navigate to **Configurações → Webhooks**.
+  </Step>
+  <Step title="Add a new endpoint">
+    Click **Adicionar endpoint** and enter the full HTTPS URL of your listener, e.g. `https://meusite.com.br/webhooks/moneydev`.
+  </Step>
+  <Step title="Select events">
+    Choose which event types you want to receive (or select **Todos os eventos** to receive everything).
+  </Step>
+  <Step title="Save and copy your signing secret">
+    After saving, MoneyDev displays a **signing secret** (`whsec_...`). Copy it immediately and store it securely — you'll use it to verify signatures on incoming events.
+  </Step>
+</Steps>
+
+### Via the API
+
+```bash
+curl https://api.moneydev.com.br/v1/webhooks \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://meusite.com.br/webhooks/moneydev",
+    "events": ["payment.paid", "payment.failed", "payment.refunded"]
+  }'
+```
+
+## Webhook Event Object
+
+Every delivery from MoneyDev follows the same envelope structure:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique identifier for this webhook event delivery. Format: `evt_xxxxxxxxxxxxxxxx`. |
+| `event` | string | Event type, e.g. `payment.paid`. |
+| `data` | object | The full resource object related to the event — for payment events, this is the complete Payment object. |
+| `created_at` | string | ISO 8601 timestamp of when the event was created on MoneyDev's side. |
+
+## Key Events
+
+| Event | Triggered when… |
+|---|---|
+| `payment.paid` | A payment is confirmed as successfully paid by the customer. Trigger order fulfilment here. |
+| `payment.failed` | A payment attempt fails (card declined, PIX expired, boleto expired without payment). |
+| `payment.refunded` | A full or partial refund is successfully processed. |
+| `payment.chargeback` | A customer's bank reverses a charge after a dispute. Review your dispute documentation. |
+| `boleto.expired` | A boleto reaches its due date without being paid. You may wish to generate a new boleto or notify the customer. |
+
+## Example Webhook Payload
+
+```json
+{
+  "id": "evt_2xNp7qRmLkT9wBcD",
+  "event": "payment.paid",
+  "created_at": "2024-08-15T14:32:51Z",
+  "data": {
+    "id": "pay_4kQz9mXrLpT8wYnV",
+    "status": "paid",
+    "method": "pix",
+    "amount": 15990,
+    "currency": "BRL",
+    "description": "Pedido #1042 – Loja Exemplo",
+    "customer": {
+      "id": "cus_7hJd2sKqNmR3aLpW",
+      "name": "Maria Silva",
+      "email": "maria.silva@email.com"
+    },
+    "created_at": "2024-08-15T14:32:00Z",
+    "paid_at": "2024-08-15T14:32:47Z"
+  }
+}
+```
+
+## Signature Verification
+
+MoneyDev signs every webhook delivery with an **HMAC-SHA256** signature and includes it in the `X-MoneyDev-Signature` header. The signature is computed over the raw request body using your endpoint's signing secret.
+
+<Warning>
+**Always verify the signature** before processing a webhook event. Without verification, a malicious actor could send fake events to your endpoint and trigger unintended actions such as marking unpaid orders as fulfilled. Never skip this step in production.
+</Warning>
+
+The `X-MoneyDev-Signature` header contains a timestamp and the HMAC digest to protect against replay attacks:
+
+```
+X-MoneyDev-Signature: t=1723733571,v1=3b5e6f8a1c2d4e7f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f
+```
+
+- `t` — Unix timestamp of when the event was sent.
+- `v1` — HMAC-SHA256 hex digest of `{t}.{raw_body}` signed with your signing secret.
+
+Reject any event where the timestamp is more than **five minutes** old to prevent replay attacks.
+
+### Verification Examples
+
+<CodeGroup>
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyMoneyDevSignature(rawBody, signatureHeader, signingSecret) {
+  const parts = Object.fromEntries(
+    signatureHeader.split(',').map(part => part.split('='))
+  );
+  const timestamp = parts['t'];
+  const receivedDigest = parts['v1'];
+
+  // Reject stale events (older than 5 minutes)
+  const tolerance = 5 * 60; // seconds
+  if (Math.floor(Date.now() / 1000) - parseInt(timestamp, 10) > tolerance) {
+    throw new Error('Webhook timestamp too old — possible replay attack.');
+  }
+
+  const signedPayload = `${timestamp}.${rawBody}`;
+  const expectedDigest = crypto
+    .createHmac('sha256', signingSecret)
+    .update(signedPayload, 'utf8')
+    .digest('hex');
+
+  const trusted = crypto.timingSafeEqual(
+    Buffer.from(expectedDigest, 'hex'),
+    Buffer.from(receivedDigest, 'hex')
+  );
+
+  if (!trusted) {
+    throw new Error('Invalid webhook signature.');
+  }
+
+  return true;
+}
+
+// Express example
+app.post('/webhooks/moneydev', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-moneydev-signature'];
+
+  try {
+    verifyMoneyDevSignature(req.body.toString('utf8'), signature, process.env.MONEYDEV_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).send(err.message);
+  }
+
+  const event = JSON.parse(req.body);
+
+  if (event.event === 'payment.paid') {
+    // Trigger order fulfilment
+  }
+
+  res.sendStatus(200);
+});
+```
+
+```python Python
+import hashlib
+import hmac
+import time
+
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+
+SIGNING_SECRET = "whsec_your_signing_secret_here"
+TIMESTAMP_TOLERANCE = 5 * 60  # 5 minutes in seconds
+
+
+def verify_moneydev_signature(raw_body: bytes, signature_header: str, secret: str) -> None:
+    parts = dict(part.split("=", 1) for part in signature_header.split(","))
+    timestamp = parts.get("t")
+    received_digest = parts.get("v1")
+
+    if not timestamp or not received_digest:
+        raise ValueError("Malformed X-MoneyDev-Signature header.")
+
+    # Reject stale events
+    if int(time.time()) - int(timestamp) > TIMESTAMP_TOLERANCE:
+        raise ValueError("Webhook timestamp too old — possible replay attack.")
+
+    signed_payload = f"{timestamp}.{raw_body.decode('utf-8')}"
+    expected_digest = hmac.new(
+        secret.encode("utf-8"),
+        signed_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_digest, received_digest):
+        raise ValueError("Invalid webhook signature.")
+
+
+@app.route("/webhooks/moneydev", methods=["POST"])
+def handle_webhook():
+    raw_body = request.get_data()
+    signature_header = request.headers.get("X-MoneyDev-Signature", "")
+
+    try:
+        verify_moneydev_signature(raw_body, signature_header, SIGNING_SECRET)
+    except ValueError as e:
+        abort(400, description=str(e))
+
+    event = request.get_json()
+
+    if event["event"] == "payment.paid":
+        pass  # Trigger order fulfilment
+
+    return "", 200
+```
+</CodeGroup>
+
+<Note>
+Always read the raw request body **before** parsing it as JSON for signature verification. Parsers may reformat the body, changing whitespace or key order, which would cause the HMAC to mismatch even for legitimate events.
+</Note>
+
+## Retry Policy
+
+If your endpoint returns a non-`2xx` HTTP status code, or if MoneyDev doesn't receive a response within **30 seconds**, the delivery is considered failed and MoneyDev will retry automatically:
+
+| Attempt | Delay after previous attempt |
+|---|---|
+| 1st retry | ~5 minutes |
+| 2nd retry | ~1 hour |
+| 3rd retry | ~12 hours |
+
+After three failed retries, the event is marked as **undelivered**. You can view failed deliveries and manually replay them from the Dashboard under **Configurações → Webhooks → [your endpoint] → Entregas com falha**.
+
+<Note>
+Design your webhook handler to be **idempotent** — i.e. processing the same event twice should produce the same result as processing it once. Use the event `id` to deduplicate deliveries in your database in case a retry delivers an event you have already processed.
+</Note>

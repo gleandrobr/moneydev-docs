@@ -1,0 +1,162 @@
+---
+title: "Accept Credit Card Payments in Brazil via MoneyDev"
+sidebarTitle: "Credit Card"
+description: "Process credit card payments in Brazil with MoneyDev. Support Visa, Mastercard, Elo, and Amex with installments and tokenized cards."
+---
+
+MoneyDev supports all major credit card brands used in Brazil: **Visa**, **Mastercard**, **Elo**, **American Express**, and **Hipercard**. You can accept one-time payments or split the total into up to 12 installments (parcelamento), a feature widely expected by Brazilian shoppers. MoneyDev handles authorization, capture, and 3DS authentication so you can focus on your checkout experience.
+
+## Integration modes
+
+<Tabs>
+  <Tab title="Card Tokenization (Recommended)">
+    With card tokenization, sensitive card data is collected directly by MoneyDev.js (our JavaScript library) or the MoneyDev mobile SDK and converted into a single-use `card_token`. **Card numbers never touch your server**, which keeps you out of PCI DSS scope and dramatically reduces your compliance burden.
+
+    This is the recommended approach for the vast majority of integrations.
+
+    **How it works:**
+    1. Include MoneyDev.js on your checkout page.
+    2. Render the MoneyDev card form or call `MoneyDev.tokenize()` with the card fields.
+    3. MoneyDev returns a `tok_...` token valid for one payment attempt.
+    4. Send only the token to your backend and use it in the `/payments` API call.
+  </Tab>
+
+  <Tab title="Direct (PCI Required)">
+    In direct mode, you collect raw card data on your own form and send it to the MoneyDev API. Because card data passes through your server, this mode requires your infrastructure to be **PCI DSS Level 1 or Level 2 compliant**.
+
+    Use this mode only if you have an existing PCI-certified environment and a specific reason to avoid client-side tokenization.
+
+    <Warning>
+      Operating in direct mode without PCI compliance exposes your business to significant legal and financial liability. If you are unsure which mode to use, choose **Card Tokenization**.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Creating a credit card payment
+
+<Steps>
+  <Step title="Tokenize the card">
+    Use MoneyDev.js in your frontend to capture card details and exchange them for a secure token. Card data never reaches your server.
+
+    ```js
+    const { token, error } = await MoneyDev.tokenize({
+      number: cardNumberInput.value,
+      exp_month: expMonthInput.value,
+      exp_year: expYearInput.value,
+      cvv: cvvInput.value,
+      holder_name: holderNameInput.value,
+    });
+
+    if (error) {
+      // Handle tokenization error
+    }
+
+    // Send `token` to your backend
+    ```
+  </Step>
+
+  <Step title="Create the payment with the card token">
+    From your backend, send a `POST` request to `/payments` with the `card_token` returned by MoneyDev.js. Set `installments` to `1` for a full-amount charge, or up to `12` for installment plans.
+
+    ```bash
+    curl --request POST \
+      --url https://api.moneydev.com.br/v1/payments \
+      --header 'Authorization: Bearer YOUR_SECRET_KEY' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "method": "credit_card",
+        "amount": 15000,
+        "currency": "BRL",
+        "card_token": "tok_4xRpLmN8wQzJ",
+        "installments": 3,
+        "capture": true,
+        "description": "Order #3087 - MoneyDev Store",
+        "customer": {
+          "name": "Fernanda Lima",
+          "email": "fernanda.lima@email.com",
+          "cpf": "321.654.987-11"
+        }
+      }'
+    ```
+
+    The `amount` is in **centavos** — `15000` equals R$ 150,00. With `installments: 3`, the customer's card will be charged in 3 monthly installments of R$ 50,00 each.
+  </Step>
+
+  <Step title="Handle 3DS authentication if required">
+    For certain cards and transaction profiles, MoneyDev may require 3DS (three-domain secure) authentication. If triggered, the response will include a `three_ds` object — see the [3DS section](#3ds-authentication) below for how to handle the redirect flow.
+  </Step>
+
+  <Step title="Receive the confirmation webhook">
+    Once the payment is authorized and captured, MoneyDev sends a `payment.paid` event to your webhook endpoint. Validate the webhook signature and fulfill the order.
+
+    ```json
+    {
+      "event": "payment.paid",
+      "payment_id": "pay_9wXtRcP5kMvH",
+      "amount": 15000,
+      "currency": "BRL",
+      "paid_at": "2024-12-01T18:42:05Z"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Installments
+
+Brazilian shoppers commonly expect to split purchases into monthly installments (parcelamento). Use the `installments` field to specify the number of installments — from `1` (no split) up to `12`.
+
+```json
+{
+  "installments": 6
+}
+```
+
+The full `amount` you pass is the **total transaction value**. MoneyDev divides it equally across the number of installments. For example, `amount: 120000` with `installments: 12` results in 12 charges of R$ 100,00 each on the customer's statement.
+
+<Note>
+  Setting `capture: true` authorizes **and** captures the payment in a single step — this is the most common configuration. If you set `capture: false`, MoneyDev places an authorization hold on the card for the full amount but does not capture the funds immediately. You must then call the `/payments/{id}/capture` endpoint within **7 days** to complete the charge, or the authorization will expire automatically.
+</Note>
+
+## 3DS Authentication
+
+3DS (Three-Domain Secure, including 3DS2) adds an extra layer of authentication between the cardholder and their issuing bank. MoneyDev evaluates each transaction using risk signals and may trigger 3DS when:
+
+- The issuing bank requires it for the transaction amount or merchant category.
+- The transaction matches a high-risk profile in the MoneyDev risk engine.
+- You explicitly request it by setting `three_ds: true` in the payment body.
+
+When 3DS is required, the payment response will have `status: "requires_action"` and include a `three_ds.redirect_url`. Redirect your customer to that URL so they can authenticate with their bank, then handle the return redirect back to your application.
+
+## Response fields
+
+<ResponseField name="id" type="string">
+  Unique payment identifier. Use this to retrieve the payment or match it against webhook events.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Payment status. Common values: `authorized`, `paid`, `requires_action` (3DS needed), `failed`.
+</ResponseField>
+
+<ResponseField name="card.brand" type="string">
+  Detected card brand. One of: `visa`, `mastercard`, `elo`, `amex`, `hipercard`.
+</ResponseField>
+
+<ResponseField name="card.last4" type="string">
+  Last four digits of the card number, safe to display to the customer for confirmation.
+</ResponseField>
+
+<ResponseField name="card.exp_month" type="integer">
+  Card expiry month (1–12).
+</ResponseField>
+
+<ResponseField name="card.exp_year" type="integer">
+  Card expiry year (four digits, e.g. `2028`).
+</ResponseField>
+
+<ResponseField name="installments" type="integer">
+  Number of installments applied to this payment.
+</ResponseField>
+
+<ResponseField name="authorized_amount" type="integer">
+  The amount authorized by the issuing bank, in centavos. In most cases this equals the requested `amount`.
+</ResponseField>

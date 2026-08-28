@@ -1,0 +1,124 @@
+---
+title: "Accept Instant PIX Payments via MoneyDev in Brazil"
+sidebarTitle: "PIX"
+description: "Integrate PIX instant payments with MoneyDev. Generate QR codes, receive real-time confirmations, and offer the fastest payment method in Brazil."
+---
+
+PIX is Brazil's instant payment system created by the Banco Central do Brasil. Available 24 hours a day, 7 days a week — including weekends and holidays — PIX transfers settle in seconds and have quickly become the most popular payment method in Brazil. Integrating PIX with MoneyDev lets your customers pay instantly using any Brazilian banking app, without the wait times associated with boleto or card processing delays.
+
+## How PIX works with MoneyDev
+
+When a customer chooses PIX at checkout, MoneyDev generates a dynamic QR code and a copy-paste key (copia e cola) tied to that specific transaction. The customer opens their banking app, scans the QR code or pastes the key, and confirms the payment. MoneyDev receives confirmation from the Brazilian payments network in real time and immediately fires a `payment.paid` webhook to your server so you can fulfill the order without delay.
+
+## Creating a PIX payment
+
+<Steps>
+  <Step title="Create the payment">
+    Send a `POST` request to `/payments` with `method` set to `"pix"`. Include the transaction amount in centavos, customer details, and an optional expiration window.
+
+    ```bash
+    curl --request POST \
+      --url https://api.moneydev.com.br/v1/payments \
+      --header 'Authorization: Bearer YOUR_SECRET_KEY' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "method": "pix",
+        "amount": 10000,
+        "currency": "BRL",
+        "description": "Order #1042 - MoneyDev Store",
+        "expires_in": 3600,
+        "customer": {
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "cpf": "123.456.789-09"
+        }
+      }'
+    ```
+
+    The `amount` field is always expressed in **centavos** — `10000` equals R$ 100,00.
+  </Step>
+
+  <Step title="Display the QR code to your customer">
+    MoneyDev returns a `pix` object in the response containing both a rendered QR code image and the raw copy-paste key. Render the QR code image using `pix.qr_code_url` and also display `pix.qr_code` as a text field so customers can copy and paste it directly into their banking app.
+
+    ```json
+    {
+      "id": "pay_3k9fHxT1mNpQ",
+      "status": "waiting_payment",
+      "method": "pix",
+      "amount": 10000,
+      "currency": "BRL",
+      "pix": {
+        "qr_code": "00020126580014br.gov.bcb.pix...",
+        "qr_code_url": "https://api.moneydev.com.br/v1/payments/pay_3k9fHxT1mNpQ/qr_code.png",
+        "expires_at": "2024-12-01T15:00:00Z"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Listen for the payment.paid webhook">
+    Once the customer completes the PIX transfer, MoneyDev immediately sends a `payment.paid` event to your configured webhook endpoint. Parse the event and verify the `payment_id` matches the order you are processing.
+
+    ```json
+    {
+      "event": "payment.paid",
+      "payment_id": "pay_3k9fHxT1mNpQ",
+      "amount": 10000,
+      "currency": "BRL",
+      "paid_at": "2024-12-01T14:23:11Z"
+    }
+    ```
+  </Step>
+
+  <Step title="Confirm and fulfill the order">
+    After validating the webhook signature and confirming the `payment_id`, mark the order as paid in your system and release the goods or services to your customer. Because PIX is instant, you can fulfill the order within seconds of the customer paying.
+  </Step>
+</Steps>
+
+## Response fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the payment. Use this ID to retrieve the payment or match it against incoming webhooks.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current payment status. Starts as `waiting_payment` and transitions to `paid` once the PIX transfer is confirmed.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Always `"pix"` for PIX payments.
+</ResponseField>
+
+<ResponseField name="pix.qr_code" type="string">
+  The raw EMV payload string (copia e cola). Display this in a text field so customers can copy and paste it into their banking app.
+</ResponseField>
+
+<ResponseField name="pix.qr_code_url" type="string">
+  A URL pointing to the rendered QR code image (PNG). Embed this directly in an `<img>` tag or display it in your mobile app.
+</ResponseField>
+
+<ResponseField name="pix.expires_at" type="string (ISO 8601)">
+  The UTC timestamp at which the PIX QR code expires. After this time the customer must request a new payment.
+</ResponseField>
+
+## PIX expiration
+
+By default, MoneyDev sets PIX QR codes to expire **1 hour** after creation. You can customize this with the `expires_in` field in your request, expressed in seconds.
+
+| Value | Expiration |
+|-------|------------|
+| `900` | 15 minutes |
+| `3600` | 1 hour (default) |
+| `86400` | 24 hours |
+| `259200` | 3 days |
+
+If a customer tries to pay after the QR code has expired, their banking app will reject the transaction. Expired payments have a status of `expired` when retrieved via the API.
+
+<Note>
+  MoneyDev PIX QR codes follow the **PIX Cobrança** (dynamic QR code) specification defined by the Banco Central do Brasil. Each QR code is uniquely tied to a single transaction and cannot be reused or paid more than once, which protects both you and your customers from duplicate charges.
+</Note>
+
+<Tip>
+  Always display **both** the QR code image and the copy-paste key (copia e cola) on your checkout page. Many customers — especially those on desktop — find it easier to copy the key string and paste it directly into their banking app rather than scanning a QR code with their phone camera.
+</Tip>

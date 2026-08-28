@@ -1,0 +1,180 @@
+---
+title: "Create a New Customer — Reusable Profile for Payments"
+sidebarTitle: "Create Customer"
+description: "Create a reusable customer profile with name, email, CPF or CNPJ, phone, and address. Reference the customer by ID on every future payment."
+---
+
+Use this endpoint to create a reusable customer profile. Storing customers in MoneyDev lets you reference them by ID when creating payments, avoiding the need to re-send personal details on every request. Customer profiles also serve as the anchor for saving tokenized payment methods, viewing payment history, and sending automatic receipts by email.
+
+<Note>
+  **CPF vs. CNPJ:** Use `cpf` for individual customers (Pessoa Física) and `cnpj` for business customers (Pessoa Jurídica). At least one tax ID is required for PIX and boleto payments. You cannot set both `cpf` and `cnpj` on the same customer.
+</Note>
+
+## Endpoint
+
+```
+POST https://api.moneydev.com.br/v1/customers
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer YOUR_API_KEY` |
+| `Content-Type` | `application/json` |
+
+### Body Parameters
+
+<ParamField body="name" type="string" required>
+  The customer's full name (individual) or legal company name (business).
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  The customer's email address. Must be a valid email format. MoneyDev uses this to send payment receipts and boleto links.
+</ParamField>
+
+<ParamField body="cpf" type="string">
+  The customer's individual tax ID (CPF), digits only — no dots or dashes (e.g., `"12345678901"`). Use for individual customers (Pessoa Física). Required for PIX and boleto payments if `cnpj` is not provided.
+</ParamField>
+
+<ParamField body="cnpj" type="string">
+  The customer's company tax ID (CNPJ), digits only — no formatting characters (e.g., `"12345678000195"`). Use for business customers (Pessoa Jurídica). Required for PIX and boleto payments if `cpf` is not provided.
+</ParamField>
+
+<ParamField body="phone" type="string">
+  The customer's phone number in **E.164 format** (e.g., `"+5511999999999"`). The country code `+55` is required for Brazilian numbers.
+</ParamField>
+
+<ParamField body="address" type="object">
+  The customer's billing or delivery address.
+
+  <Expandable title="address fields">
+    <ParamField body="address.street" type="string">
+      Street name (e.g., `"Avenida Paulista"`).
+    </ParamField>
+    <ParamField body="address.number" type="string">
+      Street number (e.g., `"1000"`).
+    </ParamField>
+    <ParamField body="address.complement" type="string">
+      Optional address complement such as apartment or suite number (e.g., `"Apto 42"`).
+    </ParamField>
+    <ParamField body="address.district" type="string">
+      Neighborhood or district (e.g., `"Bela Vista"`).
+    </ParamField>
+    <ParamField body="address.city" type="string">
+      City name (e.g., `"São Paulo"`).
+    </ParamField>
+    <ParamField body="address.state" type="string">
+      Two-letter Brazilian state abbreviation (e.g., `"SP"`, `"RJ"`, `"MG"`).
+    </ParamField>
+    <ParamField body="address.zip_code" type="string">
+      Brazilian postal code (CEP), digits only (e.g., `"01310100"`).
+    </ParamField>
+    <ParamField body="address.country" type="string">
+      ISO 3166-1 alpha-2 country code. Defaults to `"BR"`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  A set of key-value pairs for your own internal reference (e.g., your database user ID). Keys and values must be strings. Not visible to the customer.
+</ParamField>
+
+## Code Example
+
+```bash cURL
+curl --request POST \
+  --url https://api.moneydev.com.br/v1/customers \
+  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "João da Silva",
+    "email": "joao.silva@email.com",
+    "cpf": "12345678901",
+    "phone": "+5511999999999",
+    "address": {
+      "street": "Avenida Paulista",
+      "number": "1000",
+      "complement": "Apto 42",
+      "district": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP",
+      "zip_code": "01310100",
+      "country": "BR"
+    },
+    "metadata": {
+      "user_id": "usr_789",
+      "plan": "pro"
+    }
+  }'
+```
+
+## Response
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique customer identifier with the prefix `cus_`. Store this ID to reference the customer in future API calls.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The customer's full name or company name.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The customer's email address.
+</ResponseField>
+
+<ResponseField name="cpf" type="string">
+  The stored CPF, if provided. `null` otherwise.
+</ResponseField>
+
+<ResponseField name="cnpj" type="string">
+  The stored CNPJ, if provided. `null` otherwise.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  The customer's phone number in E.164 format, if provided. `null` otherwise.
+</ResponseField>
+
+<ResponseField name="address" type="object">
+  The customer's address object, if provided. Contains `street`, `number`, `complement`, `district`, `city`, `state`, `zip_code`, and `country`. `null` if no address was stored.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  The metadata object attached at creation. Returns an empty object `{}` if none was provided.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the customer was created.
+</ResponseField>
+
+## Example Response
+
+```json
+{
+  "id": "cus_01HABC789XYZ",
+  "name": "João da Silva",
+  "email": "joao.silva@email.com",
+  "cpf": "12345678901",
+  "cnpj": null,
+  "phone": "+5511999999999",
+  "address": {
+    "street": "Avenida Paulista",
+    "number": "1000",
+    "complement": "Apto 42",
+    "district": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP",
+    "zip_code": "01310100",
+    "country": "BR"
+  },
+  "metadata": {
+    "user_id": "usr_789",
+    "plan": "pro"
+  },
+  "created_at": "2025-07-14T10:00:00Z"
+}
+```

@@ -1,0 +1,45 @@
+---
+title: "MoneyDev Developer Docs: Accept PIX, Boleto & Cards"
+sidebarTitle: "Home"
+description: "MoneyDev is Brazil's payments gateway. One REST API for PIX, boleto, and cards — with real-time webhooks, a full dashboard, and easy onboarding for devs."
+---
+
+Welcome to MoneyDev — the payments gateway built for Brazil. Whether you're launching an e-commerce store, a SaaS platform, or a marketplace, MoneyDev gives you a single, unified REST API to accept PIX instant payments, boleto bancário, and credit and debit cards from Brazilian customers, with everything you need to go live quickly and scale confidently.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Set up your account, grab your API keys, and process your first payment in under 5 minutes.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore every endpoint, request parameter, and response object in the full API reference.
+  </Card>
+  <Card title="Payment Methods" icon="credit-card" href="/payment-methods/pix">
+    Learn how PIX, boleto, and credit cards work on the MoneyDev platform.
+  </Card>
+  <Card title="Guides" icon="book-open" href="/guides/accept-payment">
+    Step-by-step guides for common integration scenarios and best practices.
+  </Card>
+</CardGroup>
+
+## Get Up and Running
+
+Follow these four steps to go from zero to accepting live payments with MoneyDev.
+
+<Steps>
+  <Step title="Create Your Account">
+    Sign up at [dashboard.moneydev.com.br](https://dashboard.moneydev.com.br) to create your MoneyDev account. The process takes less than two minutes — no credit card required to start testing.
+  </Step>
+  <Step title="Get Your API Keys">
+    After signing in, navigate to **Dashboard → API Keys**. You'll find a pair of keys: a test key (prefixed `sk_test_`) for development and a live key (prefixed `sk_live_`) for production. Copy your test key to start building.
+  </Step>
+  <Step title="Make Your First Payment">
+    Send a `POST` request to `https://api.moneydev.com.br/v1/payments` with your API key in the `Authorization` header and a JSON body describing the charge. The [Quick Start](/quickstart) guide walks you through a complete PIX payment example.
+  </Step>
+  <Step title="Go Live">
+    Once you've tested your integration in the sandbox, swap your `sk_test_` key for your `sk_live_` key, complete the account verification in the dashboard, and you're ready to accept real payments from Brazilian customers.
+  </Step>
+</Steps>
+
+<Note>
+  MoneyDev provides a full **sandbox environment** for testing. All requests made with a `sk_test_` API key are processed in the sandbox — no real money moves and no actual PIX or boleto transactions are created. Use the sandbox freely during development before switching to your live key.
+</Note>

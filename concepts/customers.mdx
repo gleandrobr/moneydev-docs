@@ -1,0 +1,195 @@
+---
+title: "MoneyDev Customers: Profiles, Tax IDs, and Card Vault"
+sidebarTitle: "Customers"
+description: "Learn how to create and manage customer profiles in MoneyDev, store CPF/CNPJ tax IDs, save cards securely, and link payments to customers."
+---
+
+MoneyDev lets you create persistent **Customer** objects that represent the people or businesses that buy from you. Rather than passing raw billing information with every payment request, you create a customer once and reference their ID in all future transactions. This gives you a clean, linked history of every charge, refund, and stored payment method associated with each buyer.
+
+## Why Use Customers?
+
+- **Reuse billing information.** Store a customer's name, email, CPF/CNPJ, phone, and address once. Every new payment automatically inherits that data, reducing the payload size of your payment requests and eliminating repetitive form-filling for your users.
+- **Link payment history.** All payments linked to a customer ID are queryable together, making it easy to build order history pages, run per-customer revenue reports, or investigate disputes.
+- **Save cards securely (Card Vault).** MoneyDev tokenizes credit and debit cards on your behalf and stores the token against the customer record. Your servers never touch raw card numbers — see [Card Vault](#card-vault) below.
+
+<Tip>
+Always create (or look up) a customer **before** creating a payment. Linking payments to customers from the start gives you richer reporting and makes it far easier to reconcile charges, issue targeted refunds, and build loyalty or subscription features later.
+</Tip>
+
+## Customer Object
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the customer. Format: `cus_xxxxxxxxxxxxxxxx`.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Full legal name of the individual or the registered business name (razão social) of the company.
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  Customer's email address. MoneyDev uses this to send payment receipts and boleto PDFs when those features are enabled.
+</ResponseField>
+
+<ResponseField name="cpf" type="string">
+  Brazilian individual taxpayer number (CPF) in the format `000.000.000-00`. Required for individual customers. Mutually exclusive with `cnpj`.
+</ResponseField>
+
+<ResponseField name="cnpj" type="string">
+  Brazilian company registration number (CNPJ) in the format `00.000.000/0000-00`. Required for corporate customers. Mutually exclusive with `cpf`.
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  Customer's phone number in E.164 format, e.g. `+5511999990000`.
+</ResponseField>
+
+<ResponseField name="address" type="object">
+  Customer's billing address. Contains the following nested fields:
+
+  <Expandable title="address fields">
+    <ResponseField name="address.street" type="string">
+      Street name and number (logradouro e número).
+    </ResponseField>
+    <ResponseField name="address.complement" type="string">
+      Additional address line (complemento), e.g. apartment or suite number.
+    </ResponseField>
+    <ResponseField name="address.neighborhood" type="string">
+      Neighborhood (bairro).
+    </ResponseField>
+    <ResponseField name="address.city" type="string">
+      City (cidade).
+    </ResponseField>
+    <ResponseField name="address.state" type="string">
+      Two-letter state abbreviation (UF), e.g. `SP`, `RJ`, `MG`.
+    </ResponseField>
+    <ResponseField name="address.postal_code" type="string">
+      Brazilian postal code (CEP) with 8 digits, e.g. `01310-100`.
+    </ResponseField>
+    <ResponseField name="address.country" type="string">
+      Always `BR` for Brazil.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Creating a Customer
+
+Send a `POST` request to `/v1/customers` with the customer's details:
+
+<CodeGroup>
+```bash cURL
+curl https://api.moneydev.com.br/v1/customers \
+  -X POST \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Maria Silva",
+    "email": "maria.silva@email.com",
+    "cpf": "123.456.789-09",
+    "phone": "+5511998760000",
+    "address": {
+      "street": "Avenida Paulista, 1000",
+      "complement": "Apto 42",
+      "neighborhood": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP",
+      "postal_code": "01310-100",
+      "country": "BR"
+    }
+  }'
+```
+
+```javascript Node.js
+const response = await fetch('https://api.moneydev.com.br/v1/customers', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_SECRET_KEY',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Maria Silva',
+    email: 'maria.silva@email.com',
+    cpf: '123.456.789-09',
+    phone: '+5511998760000',
+    address: {
+      street: 'Avenida Paulista, 1000',
+      complement: 'Apto 42',
+      neighborhood: 'Bela Vista',
+      city: 'São Paulo',
+      state: 'SP',
+      postal_code: '01310-100',
+      country: 'BR',
+    },
+  }),
+});
+
+const customer = await response.json();
+console.log(customer.id); // cus_7hJd2sKqNmR3aLpW
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://api.moneydev.com.br/v1/customers",
+    headers={"Authorization": "Bearer YOUR_SECRET_KEY"},
+    json={
+        "name": "Maria Silva",
+        "email": "maria.silva@email.com",
+        "cpf": "123.456.789-09",
+        "phone": "+5511998760000",
+        "address": {
+            "street": "Avenida Paulista, 1000",
+            "complement": "Apto 42",
+            "neighborhood": "Bela Vista",
+            "city": "São Paulo",
+            "state": "SP",
+            "postal_code": "01310-100",
+            "country": "BR",
+        },
+    },
+)
+
+customer = response.json()
+print(customer["id"])  # cus_7hJd2sKqNmR3aLpW
+```
+</CodeGroup>
+
+MoneyDev returns the full customer object including the newly assigned `id`. Store this ID in your own database — you'll reference it every time you create a payment for this customer.
+
+## Linking a Customer to a Payment
+
+Pass the `customer_id` field when creating a payment:
+
+```json
+{
+  "customer_id": "cus_7hJd2sKqNmR3aLpW",
+  "method": "pix",
+  "amount": 15990,
+  "currency": "BRL",
+  "description": "Pedido #1042 – Loja Exemplo"
+}
+```
+
+MoneyDev automatically populates the payment's `customer` object from the stored profile, so you don't need to resend the name, email, or address.
+
+## Card Vault
+
+When a customer provides a credit or debit card, MoneyDev tokenizes it in a **PCI DSS Level 1** compliant vault. The raw card number (PAN) is never stored on MoneyDev's application servers and never reaches your backend.
+
+<Steps>
+  <Step title="Collect card data on the frontend">
+    Use MoneyDev.js or our mobile SDKs to render a hosted card input field. The SDK sends the card data directly to MoneyDev's secure tokenization endpoint — your server is never in the data path.
+  </Step>
+  <Step title="Receive the card token">
+    MoneyDev returns a short-lived `card_token` (valid for 15 minutes) that you pass to your backend.
+  </Step>
+  <Step title="Save the card to a customer">
+    Your backend sends the `card_token` to `POST /v1/customers/{id}/cards`. MoneyDev stores the card and returns a permanent `card_id` (format: `card_xxxxxxxxxxxxxxxx`).
+  </Step>
+  <Step title="Charge the saved card">
+    Include the `card_id` in future payment requests to charge the saved card without the customer re-entering their details.
+  </Step>
+</Steps>
+
+<Note>
+Saved cards are stored at the customer level and can be listed via `GET /v1/customers/{id}/cards`. The response includes the card brand, last four digits, and expiration date — but never the full PAN or CVV.
+</Note>

@@ -1,0 +1,529 @@
+---
+title: "MoneyDev Webhook Event Types — Full Reference Guide"
+sidebarTitle: "Events"
+description: "Browse every MoneyDev webhook event type with payload examples for payment, boleto, PIX, subscription, and chargeback notifications."
+---
+
+MoneyDev emits webhook events whenever something meaningful happens in your account — a payment is confirmed, a boleto expires, a subscription charge fails, and more. This page documents every event type, when it fires, and what its payload looks like so you can build reliable, event-driven integrations.
+
+## Event Object Structure
+
+Every webhook payload shares the same top-level envelope:
+
+```json
+{
+  "id": "evt_abc123",
+  "event": "payment.paid",
+  "created_at": "2024-01-15T14:30:00Z",
+  "data": { ... }
+}
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `id` | string | Unique identifier for this event delivery. Use it as a deduplication key. |
+| `event` | string | The event type string (e.g. `payment.paid`). |
+| `created_at` | string | ISO 8601 timestamp of when the event was generated. |
+| `data` | object | The resource object associated with the event. Shape varies by event type. |
+
+<Tip>
+  Subscribe only to the event types your integration actually needs. Narrowing your subscriptions reduces noise in your handler, lowers processing overhead, and makes your event logs easier to audit. Use the `events` array when [creating a webhook](/api-reference/webhooks/overview#create-a-webhook) to specify exactly which events you want.
+</Tip>
+
+---
+
+## Payment Events
+
+<AccordionGroup>
+
+  <Accordion title="payment.created — New payment created">
+    **When it fires:** Immediately after a new payment object is created in MoneyDev, before any authorization or confirmation.
+
+    **Event field:** `payment.created`
+
+    ```json
+    {
+      "id": "evt_01HPAY001CREATE",
+      "event": "payment.created",
+      "created_at": "2024-01-15T14:00:00Z",
+      "data": {
+        "id": "pay_01HPAY001",
+        "status": "pending",
+        "amount": 29900,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "description": "Plano Pro — Janeiro/2024",
+        "metadata": {
+          "order_id": "ORD-8821"
+        },
+        "created_at": "2024-01-15T14:00:00Z",
+        "updated_at": "2024-01-15T14:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="payment.paid — Payment confirmed">
+    **When it fires:** When a payment is successfully authorized and confirmed. For credit card payments this follows the card issuer's authorization response; for PIX, it fires as soon as the transfer settles.
+
+    **Event field:** `payment.paid`
+
+    ```json
+    {
+      "id": "evt_01HPAY002PAID",
+      "event": "payment.paid",
+      "created_at": "2024-01-15T14:05:32Z",
+      "data": {
+        "id": "pay_01HPAY001",
+        "status": "paid",
+        "amount": 29900,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "card": {
+          "brand": "visa",
+          "last4": "4242",
+          "exp_month": 12,
+          "exp_year": 2027,
+          "holder_name": "ANA SOUZA"
+        },
+        "description": "Plano Pro — Janeiro/2024",
+        "installments": 1,
+        "metadata": {
+          "order_id": "ORD-8821"
+        },
+        "paid_at": "2024-01-15T14:05:30Z",
+        "created_at": "2024-01-15T14:00:00Z",
+        "updated_at": "2024-01-15T14:05:32Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="payment.failed — Payment failed">
+    **When it fires:** When a payment attempt is declined or otherwise fails. The `data.failure_reason` field explains why.
+
+    **Event field:** `payment.failed`
+
+    ```json
+    {
+      "id": "evt_01HPAY003FAIL",
+      "event": "payment.failed",
+      "created_at": "2024-01-15T14:03:45Z",
+      "data": {
+        "id": "pay_01HPAY002",
+        "status": "failed",
+        "amount": 15000,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "customer": {
+          "id": "cus_01HCUST002",
+          "name": "Carlos Lima",
+          "email": "carlos.lima@email.com",
+          "document": "987.654.321-00"
+        },
+        "card": {
+          "brand": "mastercard",
+          "last4": "5555",
+          "exp_month": 8,
+          "exp_year": 2026,
+          "holder_name": "CARLOS LIMA"
+        },
+        "failure_reason": {
+          "code": "insufficient_funds",
+          "message": "O cartão não possui saldo suficiente para esta transação."
+        },
+        "description": "Compra avulsa",
+        "metadata": {},
+        "created_at": "2024-01-15T14:03:40Z",
+        "updated_at": "2024-01-15T14:03:45Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="payment.cancelled — Payment cancelled">
+    **When it fires:** When a pending or authorized payment is explicitly cancelled — either by you via the API or automatically by MoneyDev (e.g. a boleto that was voided before expiry).
+
+    **Event field:** `payment.cancelled`
+
+    ```json
+    {
+      "id": "evt_01HPAY004CANCEL",
+      "event": "payment.cancelled",
+      "created_at": "2024-01-15T16:00:00Z",
+      "data": {
+        "id": "pay_01HPAY003",
+        "status": "cancelled",
+        "amount": 8990,
+        "currency": "BRL",
+        "payment_method": "boleto",
+        "customer": {
+          "id": "cus_01HCUST003",
+          "name": "Fernanda Costa",
+          "email": "fernanda.costa@email.com",
+          "document": "111.222.333-44"
+        },
+        "description": "Pedido #4471",
+        "cancelled_at": "2024-01-15T16:00:00Z",
+        "cancelled_by": "merchant",
+        "metadata": {
+          "order_id": "ORD-4471"
+        },
+        "created_at": "2024-01-15T10:00:00Z",
+        "updated_at": "2024-01-15T16:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="payment.refunded — Refund issued">
+    **When it fires:** When a full or partial refund is successfully processed for a previously paid payment. The `data.refund` object contains details about the specific refund.
+
+    **Event field:** `payment.refunded`
+
+    ```json
+    {
+      "id": "evt_01HPAY005REFUND",
+      "event": "payment.refunded",
+      "created_at": "2024-01-18T09:22:00Z",
+      "data": {
+        "id": "pay_01HPAY001",
+        "status": "refunded",
+        "amount": 29900,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "description": "Plano Pro — Janeiro/2024",
+        "refund": {
+          "id": "ref_01HREF001",
+          "amount": 29900,
+          "reason": "customer_request",
+          "status": "approved",
+          "refunded_at": "2024-01-18T09:22:00Z"
+        },
+        "metadata": {
+          "order_id": "ORD-8821"
+        },
+        "created_at": "2024-01-15T14:00:00Z",
+        "updated_at": "2024-01-18T09:22:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="payment.chargeback — Chargeback opened">
+    **When it fires:** When a customer disputes a charge with their card issuer and a chargeback case is opened against a previously paid transaction. Respond promptly via the dashboard to submit evidence.
+
+    **Event field:** `payment.chargeback`
+
+    ```json
+    {
+      "id": "evt_01HPAY006CB",
+      "event": "payment.chargeback",
+      "created_at": "2024-02-01T11:00:00Z",
+      "data": {
+        "id": "pay_01HPAY001",
+        "status": "chargeback",
+        "amount": 29900,
+        "currency": "BRL",
+        "payment_method": "credit_card",
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "card": {
+          "brand": "visa",
+          "last4": "4242"
+        },
+        "chargeback": {
+          "id": "cb_01HCB001",
+          "reason": "product_not_received",
+          "status": "open",
+          "deadline_at": "2024-02-15T23:59:59Z",
+          "opened_at": "2024-02-01T11:00:00Z"
+        },
+        "description": "Plano Pro — Janeiro/2024",
+        "metadata": {
+          "order_id": "ORD-8821"
+        },
+        "created_at": "2024-01-15T14:00:00Z",
+        "updated_at": "2024-02-01T11:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+</AccordionGroup>
+
+---
+
+## Boleto Events
+
+<AccordionGroup>
+
+  <Accordion title="boleto.expired — Boleto past due date without payment">
+    **When it fires:** When a boleto's due date passes without a confirmed payment. After expiry the boleto can no longer be paid by the customer.
+
+    **Event field:** `boleto.expired`
+
+    ```json
+    {
+      "id": "evt_01HBOL001EXP",
+      "event": "boleto.expired",
+      "created_at": "2024-01-20T03:00:00Z",
+      "data": {
+        "id": "bol_01HBOL001",
+        "payment_id": "pay_01HPAY010",
+        "status": "expired",
+        "amount": 12000,
+        "currency": "BRL",
+        "customer": {
+          "id": "cus_01HCUST004",
+          "name": "Roberto Alves",
+          "email": "roberto.alves@email.com",
+          "document": "555.666.777-88"
+        },
+        "barcode": "34191.09008 63521.350002 98281.390000 9 94190000012000",
+        "due_date": "2024-01-19",
+        "description": "Fatura #9910",
+        "metadata": {
+          "invoice_id": "INV-9910"
+        },
+        "created_at": "2024-01-15T08:00:00Z",
+        "updated_at": "2024-01-20T03:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+</AccordionGroup>
+
+---
+
+## Subscription Events
+
+<AccordionGroup>
+
+  <Accordion title="subscription.created — New subscription created">
+    **When it fires:** Immediately after a new subscription is created in MoneyDev. The first recurring charge is typically triggered separately via `subscription.charged`.
+
+    **Event field:** `subscription.created`
+
+    ```json
+    {
+      "id": "evt_01HSUB001CREATE",
+      "event": "subscription.created",
+      "created_at": "2024-01-15T10:00:00Z",
+      "data": {
+        "id": "sub_01HSUB001",
+        "status": "active",
+        "plan": {
+          "id": "plan_01HPLAN001",
+          "name": "Plano Pro Mensal",
+          "amount": 29900,
+          "currency": "BRL",
+          "interval": "month",
+          "interval_count": 1
+        },
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "payment_method": "credit_card",
+        "current_period_start": "2024-01-15T10:00:00Z",
+        "current_period_end": "2024-02-15T10:00:00Z",
+        "metadata": {
+          "user_id": "usr_00112"
+        },
+        "created_at": "2024-01-15T10:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="subscription.charged — Recurring charge succeeded">
+    **When it fires:** When a scheduled recurring charge for an active subscription is successfully processed.
+
+    **Event field:** `subscription.charged`
+
+    ```json
+    {
+      "id": "evt_01HSUB002CHARGE",
+      "event": "subscription.charged",
+      "created_at": "2024-02-15T10:02:00Z",
+      "data": {
+        "id": "sub_01HSUB001",
+        "status": "active",
+        "plan": {
+          "id": "plan_01HPLAN001",
+          "name": "Plano Pro Mensal",
+          "amount": 29900,
+          "currency": "BRL",
+          "interval": "month",
+          "interval_count": 1
+        },
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "payment_id": "pay_01HPAY020",
+        "payment_method": "credit_card",
+        "current_period_start": "2024-02-15T10:00:00Z",
+        "current_period_end": "2024-03-15T10:00:00Z",
+        "metadata": {
+          "user_id": "usr_00112"
+        },
+        "charged_at": "2024-02-15T10:02:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="subscription.payment_failed — Recurring charge failed">
+    **When it fires:** When a scheduled recurring charge fails — for example, due to an expired card or insufficient funds. MoneyDev will retry according to your dunning settings before eventually cancelling the subscription.
+
+    **Event field:** `subscription.payment_failed`
+
+    ```json
+    {
+      "id": "evt_01HSUB003FAIL",
+      "event": "subscription.payment_failed",
+      "created_at": "2024-03-15T10:05:00Z",
+      "data": {
+        "id": "sub_01HSUB001",
+        "status": "past_due",
+        "plan": {
+          "id": "plan_01HPLAN001",
+          "name": "Plano Pro Mensal",
+          "amount": 29900,
+          "currency": "BRL",
+          "interval": "month",
+          "interval_count": 1
+        },
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "payment_method": "credit_card",
+        "failure_reason": {
+          "code": "card_expired",
+          "message": "O cartão informado está vencido."
+        },
+        "retry_count": 1,
+        "next_retry_at": "2024-03-18T10:05:00Z",
+        "metadata": {
+          "user_id": "usr_00112"
+        },
+        "failed_at": "2024-03-15T10:05:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="subscription.cancelled — Subscription cancelled">
+    **When it fires:** When a subscription is cancelled — either by you via the API, by the customer through a self-service portal, or automatically by MoneyDev after exhausting all dunning retries.
+
+    **Event field:** `subscription.cancelled`
+
+    ```json
+    {
+      "id": "evt_01HSUB004CANCEL",
+      "event": "subscription.cancelled",
+      "created_at": "2024-03-20T14:00:00Z",
+      "data": {
+        "id": "sub_01HSUB001",
+        "status": "cancelled",
+        "plan": {
+          "id": "plan_01HPLAN001",
+          "name": "Plano Pro Mensal",
+          "amount": 29900,
+          "currency": "BRL",
+          "interval": "month",
+          "interval_count": 1
+        },
+        "customer": {
+          "id": "cus_01HCUST001",
+          "name": "Ana Souza",
+          "email": "ana.souza@email.com",
+          "document": "123.456.789-00"
+        },
+        "cancellation_reason": "dunning_exhausted",
+        "cancelled_at": "2024-03-20T14:00:00Z",
+        "metadata": {
+          "user_id": "usr_00112"
+        },
+        "created_at": "2024-01-15T10:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+</AccordionGroup>
+
+---
+
+## PIX Events
+
+<AccordionGroup>
+
+  <Accordion title="pix.expired — PIX QR code expired">
+    **When it fires:** When a dynamic PIX QR code or copia-e-cola (copy-and-paste) reaches its expiration time without a corresponding payment being received.
+
+    **Event field:** `pix.expired`
+
+    ```json
+    {
+      "id": "evt_01HPIX001EXP",
+      "event": "pix.expired",
+      "created_at": "2024-01-15T15:00:00Z",
+      "data": {
+        "id": "pix_01HPIX001",
+        "payment_id": "pay_01HPAY030",
+        "status": "expired",
+        "amount": 5500,
+        "currency": "BRL",
+        "customer": {
+          "id": "cus_01HCUST005",
+          "name": "Mariana Ferreira",
+          "email": "mariana.ferreira@email.com",
+          "document": "222.333.444-55"
+        },
+        "qr_code": "00020126580014br.gov.bcb.pix0136c2d3e4f5...",
+        "expires_at": "2024-01-15T15:00:00Z",
+        "description": "Pedido #7750",
+        "metadata": {
+          "order_id": "ORD-7750"
+        },
+        "created_at": "2024-01-15T14:00:00Z",
+        "updated_at": "2024-01-15T15:00:00Z"
+      }
+    }
+    ```
+  </Accordion>
+
+</AccordionGroup>

@@ -1,0 +1,245 @@
+---
+title: "Set Up Recurring Billing and Subscriptions with MoneyDev"
+sidebarTitle: "Recurring Billing"
+description: "Create subscription plans and automate recurring charges in MoneyDev for SaaS products, membership programmes, and installment billing."
+---
+
+MoneyDev's recurring billing engine lets you define plans, subscribe customers, and collect payments automatically on every billing cycle — without writing your own scheduler. Whether you run a SaaS product, a membership club, or an instalment programme, this guide has you covered.
+
+## Common Use Cases
+
+- **SaaS monthly and annual plans** — charge subscribers on a fixed cadence and grant access to your product automatically.
+- **Membership clubs** — collect gym fees, professional association dues, or streaming subscriptions.
+- **Installment billing** — split a one-time purchase into equal recurring charges over a defined number of periods.
+
+---
+
+<Steps>
+
+### Create a Plan
+
+A plan defines the pricing and cadence for a group of subscribers. You create it once and reuse it for as many customers as you like.
+
+```bash
+POST https://api.moneydev.com.br/v1/plans
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "Pro Monthly",
+  "amount": 4990,
+  "currency": "BRL",
+  "interval": "monthly",
+  "description": "Full access to all Pro features, billed monthly."
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "plan_pro_monthly",
+  "name": "Pro Monthly",
+  "amount": 4990,
+  "currency": "BRL",
+  "interval": "monthly",
+  "created_at": "2024-01-15T09:00:00Z"
+}
+```
+
+Supported `interval` values: `daily`, `weekly`, `monthly`, `yearly`.
+
+### Subscribe a Customer
+
+Attach a customer to a plan by creating a subscription. Supply the customer's saved card token and, optionally, a trial period.
+
+```bash
+POST https://api.moneydev.com.br/v1/subscriptions
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+```json
+{
+  "plan_id": "plan_pro_monthly",
+  "customer_id": "cus_abc123",
+  "card_token": "tok_live_abc...",
+  "trial_days": 14
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "sub_xyz789",
+  "plan_id": "plan_pro_monthly",
+  "customer_id": "cus_abc123",
+  "status": "trialing",
+  "current_period_start": "2024-01-15T00:00:00Z",
+  "current_period_end": "2024-01-29T00:00:00Z",
+  "trial_end": "2024-01-29T00:00:00Z",
+  "created_at": "2024-01-15T09:05:00Z"
+}
+```
+
+If you omit `trial_days`, the first charge fires immediately and the subscription moves straight to `active`.
+
+### MoneyDev Charges Automatically on Each Billing Cycle
+
+You do not need to trigger charges manually. At the start of each new billing period, MoneyDev:
+
+1. Charges the card associated with the subscription.
+2. Updates `current_period_start` and `current_period_end`.
+3. Fires the `subscription.charged` webhook (see next step).
+
+If the customer's card expires or is replaced, update the subscription's card token via `PATCH /subscriptions/{id}`.
+
+### Receive the `subscription.charged` Webhook
+
+When a recurring charge succeeds, MoneyDev sends a `subscription.charged` event to your webhook endpoint. Use it to provision access, send a receipt, or update your billing records.
+
+```json
+{
+  "event": "subscription.charged",
+  "created_at": "2024-02-15T00:01:12Z",
+  "data": {
+    "subscription_id": "sub_xyz789",
+    "payment_id": "pay_rn2209",
+    "amount": 4990,
+    "currency": "BRL",
+    "period_start": "2024-02-15T00:00:00Z",
+    "period_end": "2024-03-15T00:00:00Z"
+  }
+}
+```
+
+### Handle Failed Payments
+
+If a charge fails, MoneyDev fires `subscription.payment_failed` and automatically retries the card up to three times over the following days. After all retries are exhausted, the subscription moves to `past_due`.
+
+```json
+{
+  "event": "subscription.payment_failed",
+  "created_at": "2024-02-15T00:02:00Z",
+  "data": {
+    "subscription_id": "sub_xyz789",
+    "attempt": 1,
+    "next_retry_at": "2024-02-17T00:00:00Z",
+    "failure_reason": "insufficient_funds"
+  }
+}
+```
+
+Use this webhook to notify the customer and prompt them to update their payment method before the subscription is suspended.
+
+<Note>
+  **Retry logic:** MoneyDev retries a failed card charge up to **3 times** (roughly every 2 days). If all three retries fail, the subscription status changes to `past_due`. You can still manually attempt a charge via `POST /subscriptions/{id}/charge` while the subscription is `past_due`. After an extended period without payment, the subscription transitions to `unpaid` and is effectively suspended.
+</Note>
+
+</Steps>
+
+---
+
+## Subscription Statuses
+
+| Status | Meaning |
+|---|---|
+| `trialing` | The customer is in their free trial period; no charge has been made yet. |
+| `active` | The subscription is current and the last payment succeeded. |
+| `past_due` | The latest charge failed and retries are in progress or exhausted. |
+| `unpaid` | All retries were exhausted and the subscription is suspended. |
+| `cancelled` | The subscription was cancelled by you or the customer. |
+
+---
+
+## Cancelling a Subscription
+
+To cancel a subscription immediately, send a `DELETE` request. The subscription moves to `cancelled` and no further charges are made.
+
+```bash
+curl -X DELETE https://api.moneydev.com.br/v1/subscriptions/sub_xyz789 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+```json
+{
+  "id": "sub_xyz789",
+  "status": "cancelled",
+  "cancelled_at": "2024-03-01T11:45:00Z"
+}
+```
+
+The customer retains access until the end of the current billing period (pro-rata access), unless your business logic requires immediate revocation.
+
+---
+
+## Supported Billing Intervals
+
+| Interval | Charge Frequency |
+|---|---|
+| `daily` | Every day |
+| `weekly` | Every 7 days |
+| `monthly` | Same day each calendar month |
+| `yearly` | Same day each year |
+
+---
+
+## Full Code Example (Node.js)
+
+The following example creates a monthly plan and immediately subscribes a customer.
+
+```javascript
+const API_KEY = process.env.MONEYDEV_API_KEY;
+const BASE_URL = "https://api.moneydev.com.br/v1";
+
+async function moneydev(method, path, body) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(`MoneyDev error: ${error.message}`);
+  }
+
+  return res.json();
+}
+
+async function setupSubscription(customerId, cardToken) {
+  // 1. Create (or retrieve) a plan
+  const plan = await moneydev("POST", "/plans", {
+    name: "Pro Monthly",
+    amount: 4990,        // R$49,90 in centavos
+    currency: "BRL",
+    interval: "monthly",
+    description: "Full access to all Pro features, billed monthly.",
+  });
+
+  console.log("Plan created:", plan.id);
+
+  // 2. Subscribe the customer with a 14-day trial
+  const subscription = await moneydev("POST", "/subscriptions", {
+    plan_id: plan.id,
+    customer_id: customerId,
+    card_token: cardToken,
+    trial_days: 14,
+  });
+
+  console.log("Subscription created:", subscription.id);
+  console.log("Status:", subscription.status);
+  console.log("Trial ends:", subscription.trial_end);
+
+  return subscription;
+}
+
+// Usage
+setupSubscription("cus_abc123", "tok_live_abc...");
+```

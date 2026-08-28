@@ -1,0 +1,284 @@
+---
+title: "MoneyDev Webhooks API — Register and Manage Endpoints"
+sidebarTitle: "Webhooks"
+description: "Register, list, and delete MoneyDev webhook endpoints via the REST API, and verify incoming HMAC-SHA256 payload signatures reliably."
+---
+
+Webhooks allow your application to receive real-time notifications when events occur in your MoneyDev account. Instead of polling the API for changes, you register an HTTPS endpoint and MoneyDev delivers a `POST` request to that URL whenever a subscribed event fires. This reference covers creating, listing, and deleting webhook endpoints, as well as verifying the authenticity of incoming payloads.
+
+**Base URL:** `https://api.moneydev.com.br/v1`
+
+**Authentication:** All requests require the header `Authorization: Bearer YOUR_API_KEY`.
+
+---
+
+## Create a Webhook
+
+<Note>
+  Your endpoint must be reachable over HTTPS and return a `2xx` status code within **5 seconds** to be considered a successful delivery.
+</Note>
+
+`POST /webhooks`
+
+Registers a new webhook endpoint. MoneyDev will deliver event payloads to the `url` you provide whenever one of the subscribed `events` fires.
+
+### Request Body
+
+<ParamField body="url" type="string" required>
+  The fully-qualified HTTPS URL that MoneyDev will send event payloads to. Must begin with `https://`.
+</ParamField>
+
+<ParamField body="events" type="array of strings" required>
+  One or more event type strings to subscribe to (e.g. `["payment.paid", "payment.failed"]`). Pass `["*"]` to subscribe to all events. See [Event Types](/api-reference/webhooks/events) for the complete list.
+</ParamField>
+
+<ParamField body="secret" type="string">
+  A secret string used to sign payloads with HMAC-SHA256. If omitted, MoneyDev auto-generates a cryptographically secure secret for you. Store this value securely — it is only returned in full at creation time.
+</ParamField>
+
+<ParamField body="description" type="string">
+  A human-readable label for the webhook endpoint (e.g. `"Production order notifications"`). Useful when you maintain multiple endpoints.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://api.moneydev.com.br/v1/webhooks \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.com/webhooks/moneydev",
+    "events": ["payment.paid", "payment.failed", "payment.refunded"],
+    "description": "Production order notifications"
+  }'
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the webhook endpoint (e.g. `wh_01HXYZ123ABC`).
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The HTTPS URL registered to receive event payloads.
+</ResponseField>
+
+<ResponseField name="events" type="array of strings">
+  The list of event types this endpoint is subscribed to.
+</ResponseField>
+
+<ResponseField name="secret" type="string">
+  The signing secret used to generate `X-MoneyDev-Signature` headers. Returned in full **only** on creation. Store it immediately.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the endpoint. One of `active` or `disabled`.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the webhook was registered.
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "id": "wh_01HXYZ123ABC",
+  "url": "https://yourapp.com/webhooks/moneydev",
+  "events": ["payment.paid", "payment.failed", "payment.refunded"],
+  "secret": "whsec_4a8f2c1d9e3b7a6f0c5d2e8b1f4a7c3d",
+  "status": "active",
+  "created_at": "2024-01-15T14:30:00Z"
+}
+```
+
+---
+
+## List Webhooks
+
+`GET /webhooks`
+
+Returns a paginated list of all webhook endpoints registered in your account.
+
+### Query Parameters
+
+<ParamField query="limit" type="integer">
+  Maximum number of results to return per page. Defaults to `20`; maximum is `100`.
+</ParamField>
+
+<ParamField query="after" type="string">
+  Cursor for forward pagination. Pass the `id` of the last item from the previous page to retrieve the next page of results.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X GET "https://api.moneydev.com.br/v1/webhooks?limit=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example Response
+
+```json
+{
+  "data": [
+    {
+      "id": "wh_01HXYZ123ABC",
+      "url": "https://yourapp.com/webhooks/moneydev",
+      "events": ["payment.paid", "payment.failed", "payment.refunded"],
+      "status": "active",
+      "created_at": "2024-01-15T14:30:00Z"
+    },
+    {
+      "id": "wh_01HABC456DEF",
+      "url": "https://yourapp.com/webhooks/moneydev-staging",
+      "events": ["*"],
+      "status": "active",
+      "created_at": "2024-01-10T09:00:00Z"
+    }
+  ],
+  "pagination": {
+    "has_more": false,
+    "next_cursor": null
+  }
+}
+```
+
+<Note>
+  The `secret` field is **not** returned in list responses for security reasons. If you need to rotate a secret, delete the endpoint and recreate it.
+</Note>
+
+---
+
+## Delete a Webhook
+
+`DELETE /webhooks/{id}`
+
+Permanently removes a webhook endpoint. MoneyDev will immediately stop delivering events to that URL.
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the webhook endpoint to delete (e.g. `wh_01HXYZ123ABC`).
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X DELETE https://api.moneydev.com.br/v1/webhooks/wh_01HXYZ123ABC \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Response
+
+Returns `204 No Content` on success with an empty body. If the `id` does not exist or belongs to a different account, the API returns `404 Not Found`.
+
+---
+
+## Signature Verification
+
+Every payload MoneyDev delivers includes an `X-MoneyDev-Signature` header. The value is computed as:
+
+```text
+HMAC-SHA256(raw_request_body, webhook_secret)
+```
+
+You **must** validate this signature before processing any event to ensure the payload originated from MoneyDev and has not been tampered with.
+
+<Warning>
+  Always verify the `X-MoneyDev-Signature` header before trusting or acting on a webhook payload. Skipping this step exposes your application to spoofed events from malicious actors.
+</Warning>
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require("crypto");
+
+function verifyMoneyDevSignature(rawBody, signature, secret) {
+  const expectedSig = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody) // rawBody must be the raw Buffer, not a parsed object
+    .digest("hex");
+
+  // Use timingSafeEqual to prevent timing attacks
+  const sigBuffer = Buffer.from(signature, "hex");
+  const expectedBuffer = Buffer.from(expectedSig, "hex");
+
+  if (sigBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+}
+
+// Express.js example
+app.post(
+  "/webhooks/moneydev",
+  express.raw({ type: "application/json" }),
+  (req, res) => {
+    const signature = req.headers["x-moneydev-signature"];
+    const secret = process.env.MONEYDEV_WEBHOOK_SECRET;
+
+    if (!verifyMoneyDevSignature(req.body, signature, secret)) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+
+    const event = JSON.parse(req.body);
+    console.log("Received event:", event.event);
+
+    res.status(200).json({ received: true });
+  }
+);
+```
+
+```python Python
+import hmac
+import hashlib
+import os
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+
+def verify_moneydev_signature(raw_body: bytes, signature: str, secret: str) -> bool:
+    expected_sig = hmac.new(
+        secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    # Use compare_digest to prevent timing attacks
+    return hmac.compare_digest(expected_sig, signature)
+
+@app.route("/webhooks/moneydev", methods=["POST"])
+def handle_webhook():
+    signature = request.headers.get("X-MoneyDev-Signature", "")
+    secret = os.environ["MONEYDEV_WEBHOOK_SECRET"]
+
+    if not verify_moneydev_signature(request.get_data(), signature, secret):
+        abort(401, description="Invalid signature")
+
+    event = request.get_json()
+    print(f"Received event: {event['event']}")
+
+    return {"received": True}, 200
+```
+
+</CodeGroup>
+
+---
+
+## Retry Policy
+
+If your endpoint returns a non-`2xx` HTTP status code, or does not respond within **5 seconds**, MoneyDev marks the delivery as failed and schedules a retry. The retry schedule uses exponential backoff:
+
+| Attempt | Delay after previous failure |
+| ------- | ----------------------------- |
+| 1st retry | 5 minutes |
+| 2nd retry | 30 minutes |
+| 3rd retry | 6 hours |
+
+After **3 failed retries** (4 total attempts) over a **24-hour window**, MoneyDev stops trying and marks the event delivery as permanently failed. You can view delivery logs and manually replay failed events from the MoneyDev dashboard.
+
+<Note>
+  To avoid duplicate processing, design your webhook handler to be **idempotent**. Use the `id` field of the event object as a deduplication key.
+</Note>

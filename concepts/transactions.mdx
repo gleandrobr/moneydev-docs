@@ -1,0 +1,131 @@
+---
+title: "MoneyDev Transactions: Settlement Timelines and History"
+sidebarTitle: "Transactions"
+description: "Understand how MoneyDev transactions and settlement work, including D+1 PIX, D+30 credit card timelines, fees, and how to access your transaction history."
+---
+
+In MoneyDev, a **payment** represents the customer-facing event — the act of a customer paying you. A **transaction** is the underlying financial record that MoneyDev creates on your behalf when money actually moves. A single payment typically generates at least one transaction (a credit to your balance), and possibly more (e.g. a separate fee debit or a refund credit). Understanding the distinction helps you reconcile your balance accurately and forecast cash flow.
+
+## Settlement Timelines
+
+Settlement is the process by which paid funds become available in your MoneyDev balance after clearing through the Brazilian payment networks. Each payment method has its own settlement window:
+
+| Method | Settlement Timeline | Notes |
+|---|---|---|
+| **PIX** | D+1 | Funds received 24/7; credited to your balance on the next business day. |
+| **Boleto** | D+2 after payment | Settlement starts after the bank confirms payment, which can take up to one business day. |
+| **Credit Card** | D+30 (standard) | Based on the transaction date, not the statement date. Anticipation is available — see below. |
+| **Debit Card** | D+1 | Online authorization required; settled the next business day. |
+
+<Info>
+**Receivables Anticipation** lets you access credit card revenue before the standard D+30 window — often as fast as D+2 — for a small anticipation fee. You can request anticipation for individual receivables or your full receivables schedule directly from the MoneyDev Dashboard under **Financeiro → Antecipação**, or via the Anticipation API endpoint. Check your contract for the applicable anticipation rate.
+</Info>
+
+## Transaction Object
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the transaction. Format: `txn_xxxxxxxxxxxxxxxx`.
+</ResponseField>
+
+<ResponseField name="payment_id" type="string" required>
+  The ID of the payment that originated this transaction. Use this to cross-reference transactions with their source payment.
+</ResponseField>
+
+<ResponseField name="type" type="string" required>
+  Direction of the money movement relative to your balance. Either `credit` (money coming in) or `debit` (money going out, e.g. refunds or fees).
+</ResponseField>
+
+<ResponseField name="amount" type="integer" required>
+  Gross transaction amount in centavos, before fees are deducted.
+</ResponseField>
+
+<ResponseField name="net_amount" type="integer" required>
+  Amount actually credited or debited to your balance in centavos, after all fees are deducted. This is the number that affects your available balance.
+</ResponseField>
+
+<ResponseField name="fee" type="integer" required>
+  Total fee charged by MoneyDev for this transaction, in centavos. Equal to `amount - net_amount` for credit transactions.
+</ResponseField>
+
+<ResponseField name="currency" type="string" required>
+  Always `BRL`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Settlement status of the transaction. One of: `pending` (not yet settled), `settled` (funds available in balance), `cancelled` (transaction voided, e.g. due to a chargeback reversal).
+</ResponseField>
+
+<ResponseField name="settled_at" type="string">
+  ISO 8601 timestamp of when the transaction was settled and funds became available in your balance. `null` if still pending.
+</ResponseField>
+
+## Accessing Your Transaction History
+
+### MoneyDev Dashboard
+
+The easiest way to view your transactions is through the Dashboard:
+
+<Steps>
+  <Step title="Log in to the Dashboard">
+    Go to [dashboard.moneydev.com.br](https://dashboard.moneydev.com.br) and sign in with your credentials.
+  </Step>
+  <Step title="Navigate to Transactions">
+    Click **Financeiro** in the left sidebar, then select **Transações**.
+  </Step>
+  <Step title="Filter and export">
+    Use the date range, payment method, and status filters to narrow results. Click **Exportar CSV** to download a statement for reconciliation.
+  </Step>
+</Steps>
+
+### Transactions API
+
+For programmatic access, query the Transactions endpoint directly:
+
+```bash
+curl https://api.moneydev.com.br/v1/transactions \
+  -H "Authorization: Bearer YOUR_SECRET_KEY" \
+  -G \
+  --data-urlencode "status=settled" \
+  --data-urlencode "created_after=2024-08-01T00:00:00Z" \
+  --data-urlencode "limit=50"
+```
+
+The response is a paginated list of transaction objects. Use the `next_cursor` value from the response to fetch the next page:
+
+```bash
+curl "https://api.moneydev.com.br/v1/transactions?cursor=NEXT_CURSOR_VALUE" \
+  -H "Authorization: Bearer YOUR_SECRET_KEY"
+```
+
+## Fees Overview
+
+MoneyDev charges a blended fee composed of a **percentage rate** plus a **fixed amount per transaction**. The table below shows illustrative default rates:
+
+| Payment Method | Rate | Fixed Fee |
+|---|---|---|
+| PIX | 0.99% | R$0,00 |
+| Boleto | 1.49% | R$1,99 |
+| Credit Card (1×) | 2.99% | R$0,49 |
+| Credit Card (2–6×) | 3.49% | R$0,49 |
+| Credit Card (7–12×) | 3.99% | R$0,49 |
+| Debit Card | 1.99% | R$0,49 |
+
+<Note>
+The rates above are **illustrative only**. Your actual fees depend on your negotiated contract with MoneyDev. Log in to the Dashboard and navigate to **Configurações → Taxas** to view the exact rates applied to your account.
+</Note>
+
+## Example Transaction Object
+
+```json
+{
+  "id": "txn_9pLm3nRqKwT5xZvB",
+  "payment_id": "pay_4kQz9mXrLpT8wYnV",
+  "type": "credit",
+  "amount": 15990,
+  "net_amount": 15831,
+  "fee": 159,
+  "currency": "BRL",
+  "status": "settled",
+  "settled_at": "2024-08-16T09:00:00Z"
+}
+```

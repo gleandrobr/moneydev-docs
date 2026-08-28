@@ -1,0 +1,134 @@
+---
+title: "Accept Debit Card Payments in Brazil with MoneyDev"
+sidebarTitle: "Debit Card"
+description: "Process debit card payments in Brazil with MoneyDev. Supports Visa Débito, Mastercard Débito, and Elo Débito with 3DS authentication."
+---
+
+Debit cards in Brazil deduct funds directly from the customer's checking account at the time of purchase, making them a trusted option for customers who prefer not to use credit. MoneyDev supports real-time debit card processing with **D+1 settlement** (funds arrive in your account the next business day). Because debit card payments access funds directly, **3DS authentication is mandatory** for all debit transactions under Brazilian regulations — MoneyDev handles the entire 3DS flow for you.
+
+## Supported brands
+
+| Brand | Network |
+|-------|---------|
+| Visa Débito | Visa |
+| Mastercard Débito | Mastercard |
+| Elo Débito | Elo |
+
+## Processing a debit card payment
+
+<Steps>
+  <Step title="Tokenize the card with MoneyDev.js">
+    Use MoneyDev.js on your frontend to capture the customer's debit card details and convert them into a secure `card_token`. Card numbers never pass through your server.
+
+    ```js
+    const { token, error } = await MoneyDev.tokenize({
+      number: cardNumberInput.value,
+      exp_month: expMonthInput.value,
+      exp_year: expYearInput.value,
+      cvv: cvvInput.value,
+      holder_name: holderNameInput.value,
+    });
+
+    if (error) {
+      // Handle tokenization error and display a message to the customer
+    }
+
+    // Send `token` securely to your backend
+    ```
+  </Step>
+
+  <Step title="Create the payment">
+    From your backend, send a `POST` request to `/payments` with `method` set to `"debit_card"` and the `card_token` from the previous step.
+
+    ```bash
+    curl --request POST \
+      --url https://api.moneydev.com.br/v1/payments \
+      --header 'Authorization: Bearer YOUR_SECRET_KEY' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "method": "debit_card",
+        "amount": 8000,
+        "currency": "BRL",
+        "card_token": "tok_9gNwBqX3zPrL",
+        "description": "Order #5521 - MoneyDev Store",
+        "customer": {
+          "name": "Roberto Mendes",
+          "email": "roberto.mendes@email.com",
+          "cpf": "456.789.123-55"
+        }
+      }'
+    ```
+
+    The `amount` is in **centavos** — `8000` equals R$ 80,00. Debit card payments do not support installments; the full amount is charged immediately.
+  </Step>
+
+  <Step title="Redirect the customer for 3DS authentication">
+    Because 3DS is required for all debit card payments, the initial API response will have `status: "requires_action"` and include a `three_ds.redirect_url`. Redirect your customer to this URL so they can authenticate with their issuing bank.
+
+    ```json
+    {
+      "id": "pay_2bYhWnK6mTsV",
+      "status": "requires_action",
+      "method": "debit_card",
+      "amount": 8000,
+      "currency": "BRL",
+      "three_ds": {
+        "redirect_url": "https://auth.moneydev.com.br/3ds/pay_2bYhWnK6mTsV",
+        "status": "pending"
+      }
+    }
+    ```
+
+    Redirect the customer to `three_ds.redirect_url` immediately after receiving this response. Include a `return_url` query parameter if you want MoneyDev to redirect back to a specific page in your application after authentication.
+  </Step>
+
+  <Step title="Customer authenticates with their bank">
+    The customer is taken to their issuing bank's authentication page, where they verify their identity — typically via a one-time password (OTP) sent by SMS or through their banking app's biometric confirmation. This step is handled entirely between the customer and their bank; no action is required from your server.
+  </Step>
+
+  <Step title="Receive the confirmation webhook">
+    After successful 3DS authentication, the issuing bank authorizes the debit and MoneyDev captures the funds. MoneyDev then sends a `payment.paid` event to your webhook endpoint. Validate the webhook signature before fulfilling the order.
+
+    ```json
+    {
+      "event": "payment.paid",
+      "payment_id": "pay_2bYhWnK6mTsV",
+      "amount": 8000,
+      "currency": "BRL",
+      "paid_at": "2024-12-01T20:05:33Z"
+    }
+    ```
+
+    If the customer fails or abandons 3DS authentication, MoneyDev sends a `payment.failed` event instead. Handle this case by showing an appropriate error message and prompting the customer to retry or choose a different payment method.
+  </Step>
+</Steps>
+
+## Response fields
+
+<ResponseField name="id" type="string">
+  Unique payment identifier. Reference this ID when retrieving the payment or matching incoming webhooks.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Payment status. For debit cards, the initial status is always `requires_action` (awaiting 3DS). After successful authentication it transitions to `paid`; after a failure it transitions to `failed`.
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  Always `"debit_card"` for debit card payments.
+</ResponseField>
+
+<ResponseField name="three_ds.redirect_url" type="string">
+  The URL you must redirect the customer to for 3DS authentication with their issuing bank. This URL is single-use and expires after 15 minutes.
+</ResponseField>
+
+<ResponseField name="three_ds.status" type="string">
+  Current 3DS authentication status. Values: `pending` (awaiting redirect), `authenticated` (success), `failed` (authentication rejected), `abandoned` (customer did not complete).
+</ResponseField>
+
+<Warning>
+  **3DS authentication is mandatory for all debit card payments in Brazil.** This requirement is enforced by the Banco Central do Brasil to protect consumers from unauthorized debit transactions. MoneyDev will reject any attempt to process a debit card payment without 3DS. Ensure your frontend handles the `requires_action` status and completes the redirect flow described above.
+</Warning>
+
+<Note>
+  Debit card payments settle **D+1** — funds are transferred to your MoneyDev balance on the next business day after the transaction is confirmed. This is faster than credit card settlements (which vary by acquirer and installment plan) and comparable to PIX for balance availability. If same-day settlement is a priority, consider offering PIX as an alternative payment method alongside debit cards.
+</Note>

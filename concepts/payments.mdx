@@ -1,0 +1,113 @@
+---
+title: "MoneyDev Payments: Lifecycle, Statuses, and Methods"
+sidebarTitle: "Payments"
+description: "Learn how payments work in MoneyDev: lifecycle, statuses, supported methods, and how to track a payment from creation to settlement."
+---
+
+MoneyDev models every customer transaction as a **Payment** — a first-class object that carries the full history of a charge from the moment you create it until the funds settle in your account. Understanding the payment lifecycle helps you build reliable integrations, handle edge cases gracefully, and give your customers accurate status updates in real time.
+
+## Payment Lifecycle
+
+Every payment moves through a well-defined sequence of states. The happy path looks like this:
+
+```
+created → pending → paid → settled
+```
+
+A payment is **created** the instant you call the API. It immediately moves to **pending** while MoneyDev waits for the customer to complete the action (scanning a PIX QR code, paying a boleto, or the card network authorizing the charge). Once the customer pays, the status becomes **paid** and the funds enter the settlement pipeline. After the applicable settlement window closes, the payment is marked **settled** and the net amount is credited to your balance.
+
+Payments can also exit the happy path at several points:
+
+```
+pending  → failed      (authorization denied, boleto expired, PIX timeout)
+paid     → refunded    (you issued a full or partial refund)
+paid     → chargeback  (customer disputed the charge with their bank)
+pending  → cancelled   (you cancelled the payment before the customer paid)
+```
+
+## Payment Statuses
+
+| Status | Description |
+|---|---|
+| `pending` | The payment has been created and is awaiting customer action or network confirmation. No funds have moved yet. |
+| `paid` | The customer successfully completed the payment. Funds are queued for settlement. |
+| `failed` | The payment could not be completed — the card was declined, the boleto expired, or the PIX timed out. No funds were charged. |
+| `cancelled` | You cancelled the payment before the customer paid. Only possible from the `pending` state. |
+| `refunded` | A full or partial refund was issued after a successful payment. The refunded amount will be returned to the customer. |
+| `chargeback` | The customer's bank reversed the charge after a dispute. MoneyDev will notify you via webhook and debit the amount from your balance. |
+
+## Supported Payment Methods
+
+### PIX
+Brazil's instant payment network operated by the Banco Central do Brasil. Payments settle in seconds, 24/7, including weekends and holidays. MoneyDev generates a dynamic QR code and a copia-e-cola string for each PIX charge. PIX payments expire after a configurable window (default: 30 minutes).
+
+### Boleto Bancário
+A traditional Brazilian bank slip. The customer can pay at any bank branch, ATM, internet banking portal, or supported app. Boleto payments typically confirm within one business day after payment. You can set a custom due date (up to 30 days in the future).
+
+### Credit Card
+Supports all major card brands (Visa, Mastercard, Elo, Amex, Hipercard). You can charge in 1–12 installments. Cards are tokenized in MoneyDev's PCI-compliant vault — you never handle raw card data in your servers. 3DS2 authentication is supported.
+
+### Debit Card
+Available for Visa Débito and Mastercard Débito. Debit card transactions require online authorization from the cardholder's bank and settle on D+1.
+
+## Payment Object
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the payment. Format: `pay_xxxxxxxxxxxxxxxx`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status of the payment. One of: `pending`, `paid`, `failed`, `cancelled`, `refunded`, `chargeback`.
+</ResponseField>
+
+<ResponseField name="method" type="string" required>
+  Payment method used. One of: `pix`, `boleto`, `credit_card`, `debit_card`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer" required>
+  Total charge amount **in centavos** (smallest BRL unit). For example, `5000` represents R$50,00.
+</ResponseField>
+
+<ResponseField name="currency" type="string" required>
+  Always `BRL` for Brazilian Real. MoneyDev currently processes payments in BRL only.
+</ResponseField>
+
+<ResponseField name="customer" type="object">
+  The customer associated with this payment. Contains at minimum `id`, `name`, and `email`. See [Customers](/concepts/customers) for the full schema.
+</ResponseField>
+
+<ResponseField name="created_at" type="string" required>
+  ISO 8601 timestamp recording when the payment was created, e.g. `2024-08-15T14:32:00Z`.
+</ResponseField>
+
+<ResponseField name="paid_at" type="string">
+  ISO 8601 timestamp recording when the payment was confirmed as paid. `null` if the payment has not yet been paid.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Optional free-text description you provide at creation time. Displayed to the customer on their bank statement where supported (e.g. PIX `infoPagador`).
+</ResponseField>
+
+<Note>
+All monetary amounts in the MoneyDev API are expressed as **integers in centavos**. To charge R$50,00, set `amount` to `5000`. To charge R$1,99, set `amount` to `199`. This avoids floating-point rounding issues and matches the convention used by the Brazilian payment networks.
+</Note>
+
+## Example Payment Object
+
+```json
+{
+  "id": "pay_4kQz9mXrLpT8wYnV",
+  "status": "paid",
+  "method": "pix",
+  "amount": 15990,
+  "currency": "BRL",
+  "description": "Pedido #1042 – Loja Exemplo",
+  "customer": {
+    "id": "cus_7hJd2sKqNmR3aLpW",
+    "name": "Maria Silva",
+    "email": "maria.silva@email.com"
+  },
+  "created_at": "2024-08-15T14:32:00Z",
+  "paid_at": "2024-08-15T14:32:47Z"
+}
+```

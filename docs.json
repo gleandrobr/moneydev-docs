@@ -1,0 +1,118 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "MoneyDev",
+  "colors": {
+    "primary": "#ef7025",
+    "light": "#eec9bc",
+    "dark": "#4fa1ab"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/payments",
+              "concepts/transactions",
+              "concepts/customers",
+              "concepts/webhooks"
+            ]
+          },
+          {
+            "group": "Payment Methods",
+            "pages": [
+              "payment-methods/pix",
+              "payment-methods/boleto",
+              "payment-methods/credit-card",
+              "payment-methods/debit-card"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/accept-payment",
+              "guides/refunds",
+              "guides/recurring-billing",
+              "guides/split-payments"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "resources/testing",
+              "resources/errors",
+              "resources/faq"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview",
+              "api-reference/authentication",
+              "api-reference/pagination",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-reference/payments/create",
+              "api-reference/payments/retrieve",
+              "api-reference/payments/list",
+              "api-reference/payments/refund"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api-reference/customers/create",
+              "api-reference/customers/retrieve",
+              "api-reference/customers/update",
+              "api-reference/customers/list"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api-reference/webhooks/overview",
+              "api-reference/webhooks/events"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@moneydev.com.br"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://dashboard.moneydev.com.br"
+    }
+  },
+  "footer": {
+    "socials": {}
+  }
+}

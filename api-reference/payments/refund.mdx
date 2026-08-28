@@ -1,0 +1,137 @@
+---
+title: "Refund a Payment — Full or Partial Refund Endpoint"
+sidebarTitle: "Refund Payment"
+description: "Issue a full or partial refund for a paid PIX, credit card, or debit card payment. Specify the amount in centavos or omit for a full refund."
+---
+
+Use this endpoint to refund a payment that has already reached `paid` status. You can issue a full refund by omitting the `amount` field, or a partial refund by specifying the exact amount in centavos to return to the customer. For PIX refunds, the funds are returned to the originating PIX key instantly. Card refunds typically appear on the customer's statement within 5–10 business days depending on the card network.
+
+<Warning>
+  **Refunds are irreversible.** Once a refund is submitted and reaches `succeeded` status, it cannot be cancelled or recalled. Always verify the refund amount before submitting. If you need to issue multiple partial refunds for the same payment, ensure their combined total does not exceed the original payment amount.
+</Warning>
+
+## Endpoint
+
+```
+POST https://api.moneydev.com.br/v1/payments/:id/refund
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer YOUR_API_KEY` |
+| `Content-Type` | `application/json` |
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment to refund. Must begin with `pay_` (e.g., `pay_01HXYZ123456ABCDEF`). The payment must have a `paid` status.
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="amount" type="integer">
+  The amount to refund in **centavos**. If omitted, the full original payment amount is refunded. Must not exceed the remaining refundable amount (original amount minus any prior partial refunds).
+</ParamField>
+
+<ParamField body="reason" type="string">
+  The reason for the refund. Accepted values:
+  - `"customer_request"` — the customer asked for a refund
+  - `"duplicate"` — the payment was charged more than once
+  - `"fraud"` — the payment was identified as fraudulent
+  - `"other"` — any other reason
+</ParamField>
+
+<ParamField body="pix_key" type="string">
+  The PIX key to return funds to. **Required when refunding a PIX payment where the original payer's key cannot be determined automatically.** For card payments, funds are automatically returned to the originating card.
+</ParamField>
+
+## Code Examples
+
+<CodeGroup>
+
+```bash cURL (full refund)
+curl --request POST \
+  --url https://api.moneydev.com.br/v1/payments/pay_01HXYZ123456ABCDEF/refund \
+  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "reason": "customer_request"
+  }'
+```
+
+```bash cURL (partial refund)
+curl --request POST \
+  --url https://api.moneydev.com.br/v1/payments/pay_01HXYZ123456ABCDEF/refund \
+  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "amount": 2000,
+    "reason": "customer_request"
+  }'
+```
+
+</CodeGroup>
+
+## Response
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique refund identifier with the prefix `ref_`.
+</ResponseField>
+
+<ResponseField name="payment_id" type="string">
+  The ID of the original payment that was refunded (`pay_...`).
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  The refunded amount in centavos.
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  The reason provided for the refund, or `null` if none was given.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the refund:
+  - `pending` — the refund has been submitted and is being processed
+  - `succeeded` — the refund was successfully processed and funds are on their way
+  - `failed` — the refund could not be processed; contact MoneyDev support
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the refund was created.
+</ResponseField>
+
+## Example Responses
+
+<Tabs>
+  <Tab title="Full refund">
+    ```json
+    {
+      "id": "ref_01HYYZ555444MNOPQR",
+      "payment_id": "pay_01HXYZ123456ABCDEF",
+      "amount": 4990,
+      "reason": "customer_request",
+      "status": "succeeded",
+      "created_at": "2025-07-14T16:00:00Z"
+    }
+    ```
+  </Tab>
+  <Tab title="Partial refund">
+    ```json
+    {
+      "id": "ref_01HYYZ666333STUVWX",
+      "payment_id": "pay_01HXYZ123456ABCDEF",
+      "amount": 2000,
+      "reason": "customer_request",
+      "status": "pending",
+      "created_at": "2025-07-14T16:05:00Z"
+    }
+    ```
+  </Tab>
+</Tabs>

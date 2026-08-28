@@ -1,0 +1,376 @@
+---
+title: "Create a New Payment — PIX, Boleto, or Credit Card"
+sidebarTitle: "Create Payment"
+description: "Create a PIX, boleto bancário, credit card, or debit card payment. Pass the method, amount in centavos, and customer details to get started."
+---
+
+Use this endpoint to create a new payment. MoneyDev supports PIX, boleto bancário, credit card, and debit card. All amounts are expressed in **centavos** (e.g., `R$ 49,90` → `4990`). On success, the response includes method-specific fields such as a PIX QR code, a boleto barcode, or a card authorization code.
+
+## Endpoint
+
+```
+POST https://api.moneydev.com.br/v1/payments
+```
+
+## Request
+
+### Headers
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer YOUR_API_KEY` |
+| `Content-Type` | `application/json` |
+| `Idempotency-Key` | *(optional)* A unique string to safely retry requests without creating duplicate payments. |
+
+### Body Parameters
+
+<ParamField body="method" type="string" required>
+  The payment method to use. Must be one of:
+  - `"pix"` — instant bank transfer via PIX
+  - `"boleto"` — printable bank slip (boleto bancário)
+  - `"credit_card"` — credit card charge
+  - `"debit_card"` — debit card charge
+</ParamField>
+
+<ParamField body="amount" type="integer" required>
+  The payment amount in **centavos**. For example, `R$ 100,00` should be sent as `10000`. Must be a positive integer.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The currency code. Must always be `"BRL"`.
+</ParamField>
+
+<ParamField body="description" type="string">
+  A human-readable description of the payment. Shown in the customer's bank statement and in the MoneyDev dashboard.
+</ParamField>
+
+<ParamField body="customer" type="object" required>
+  The customer associated with this payment. You may pass either an existing customer ID or an inline customer object.
+
+  <Expandable title="customer fields">
+    <ParamField body="customer.id" type="string">
+      The ID of an existing customer (`cus_...`). If provided, all other `customer.*` fields are ignored.
+    </ParamField>
+    <ParamField body="customer.name" type="string">
+      Full name of the customer. Required when creating an inline customer.
+    </ParamField>
+    <ParamField body="customer.email" type="string">
+      Customer's email address. Required when creating an inline customer.
+    </ParamField>
+    <ParamField body="customer.cpf" type="string">
+      Individual tax ID (CPF), digits only (e.g., `"12345678901"`). Required for PIX and boleto if `cnpj` is not provided.
+    </ParamField>
+    <ParamField body="customer.cnpj" type="string">
+      Company tax ID (CNPJ), digits only (e.g., `"12345678000195"`). Required for PIX and boleto if `cpf` is not provided.
+    </ParamField>
+    <ParamField body="customer.phone" type="string">
+      Customer's phone number in E.164 format (e.g., `"+5511999999999"`).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="card_token" type="string">
+  A tokenized card reference obtained from MoneyDev.js or the Cards API. **Required** when `method` is `"credit_card"` or `"debit_card"`.
+</ParamField>
+
+<ParamField body="installments" type="integer" default="1">
+  Number of installments for credit card payments. Accepted values: `1` through `12`. Ignored for all other payment methods.
+</ParamField>
+
+<ParamField body="capture" type="boolean" default="true">
+  When `true`, the credit card charge is authorized **and** captured immediately. Set to `false` to authorize only — you must then call `POST /payments/:id/capture` to settle the charge. Ignored for non-card methods.
+</ParamField>
+
+<ParamField body="due_date" type="string">
+  Expiry date for a boleto, formatted as `YYYY-MM-DD` (e.g., `"2025-08-15"`). Defaults to 3 business days from the creation date. Only applicable when `method` is `"boleto"`.
+</ParamField>
+
+<ParamField body="expires_in" type="integer">
+  Time in **seconds** before the PIX QR code expires. Defaults to `3600` (1 hour). Only applicable when `method` is `"pix"`.
+</ParamField>
+
+<ParamField body="splits" type="array">
+  An array of split payment recipients. Use this to automatically distribute a portion of the payment to one or more other MoneyDev accounts.
+
+  <Expandable title="splits item fields">
+    <ParamField body="splits[].recipient_id" type="string" required>
+      The recipient's MoneyDev account ID (`rec_...`).
+    </ParamField>
+    <ParamField body="splits[].amount" type="integer">
+      Fixed amount in centavos to transfer to this recipient.
+    </ParamField>
+    <ParamField body="splits[].percentage" type="number">
+      Percentage of the total amount (e.g., `15.5` for 15.5%). Use either `amount` or `percentage`, not both.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  A set of key-value pairs you can attach to the payment for your own reference. Keys and values must be strings. Not shown to the customer.
+</ParamField>
+
+## Code Examples
+
+<CodeGroup>
+
+```bash cURL (PIX)
+curl --request POST \
+  --url https://api.moneydev.com.br/v1/payments \
+  --header 'Authorization: Bearer YOUR_API_KEY' \
+  --header 'Content-Type: application/json' \
+  --header 'Idempotency-Key: order_abc123' \
+  --data '{
+    "method": "pix",
+    "amount": 4990,
+    "currency": "BRL",
+    "description": "Pedido #1042 — Camiseta MoneyDev",
+    "customer": {
+      "name": "João da Silva",
+      "email": "joao.silva@email.com",
+      "cpf": "12345678901",
+      "phone": "+5511999999999"
+    },
+    "expires_in": 3600,
+    "metadata": {
+      "order_id": "1042",
+      "store": "loja-sp"
+    }
+  }'
+```
+
+```javascript Node.js
+const response = await fetch('https://api.moneydev.com.br/v1/payments', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'order_abc123',
+  },
+  body: JSON.stringify({
+    method: 'pix',
+    amount: 4990,
+    currency: 'BRL',
+    description: 'Pedido #1042 — Camiseta MoneyDev',
+    customer: {
+      name: 'João da Silva',
+      email: 'joao.silva@email.com',
+      cpf: '12345678901',
+      phone: '+5511999999999',
+    },
+    expires_in: 3600,
+    metadata: {
+      order_id: '1042',
+      store: 'loja-sp',
+    },
+  }),
+});
+
+const payment = await response.json();
+console.log(payment.id);            // pay_01J...
+console.log(payment.pix.qr_code);  // EMV string to render QR
+```
+
+```python Python
+import httpx
+
+response = httpx.post(
+    "https://api.moneydev.com.br/v1/payments",
+    headers={
+        "Authorization": "Bearer YOUR_API_KEY",
+        "Idempotency-Key": "order_abc123",
+    },
+    json={
+        "method": "pix",
+        "amount": 4990,
+        "currency": "BRL",
+        "description": "Pedido #1042 — Camiseta MoneyDev",
+        "customer": {
+            "name": "João da Silva",
+            "email": "joao.silva@email.com",
+            "cpf": "12345678901",
+            "phone": "+5511999999999",
+        },
+        "expires_in": 3600,
+        "metadata": {
+            "order_id": "1042",
+            "store": "loja-sp",
+        },
+    },
+)
+
+payment = response.json()
+print(payment["id"])               # pay_01J...
+print(payment["pix"]["qr_code"])   # EMV string to render QR
+```
+
+</CodeGroup>
+
+## Response
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique payment identifier with the prefix `pay_`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current payment status. Possible values:
+  - `pending` — awaiting customer action or bank confirmation
+  - `authorized` — card authorized but not yet captured
+  - `paid` — payment confirmed and funds received
+  - `failed` — payment attempt was unsuccessful
+  - `refunded` — payment has been fully refunded
+  - `partially_refunded` — payment has been partially refunded
+  - `expired` — PIX or boleto expired before payment
+  - `cancelled` — payment was cancelled before capture
+</ResponseField>
+
+<ResponseField name="method" type="string">
+  The payment method used: `pix`, `boleto`, `credit_card`, or `debit_card`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  The charged amount in centavos.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Always `"BRL"`.
+</ResponseField>
+
+<ResponseField name="customer" type="object">
+  The customer object associated with this payment, including `id`, `name`, and `email`.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The payment description provided at creation, if any.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  ISO 8601 timestamp of when the payment was created (e.g., `"2025-07-14T13:00:00Z"`).
+</ResponseField>
+
+<ResponseField name="paid_at" type="string">
+  ISO 8601 timestamp of when the payment was confirmed. `null` if not yet paid.
+</ResponseField>
+
+<ResponseField name="pix" type="object">
+  Present when `method` is `"pix"`. Contains PIX-specific fields.
+
+  <Expandable title="pix fields">
+    <ResponseField name="pix.qr_code" type="string">
+      The EMV payload string used to generate the QR code image.
+    </ResponseField>
+    <ResponseField name="pix.qr_code_url" type="string">
+      A hosted URL serving a ready-to-display QR code PNG image.
+    </ResponseField>
+    <ResponseField name="pix.expires_at" type="string">
+      ISO 8601 timestamp when the PIX QR code expires.
+    </ResponseField>
+    <ResponseField name="pix.end_to_end_id" type="string">
+      The Banco Central end-to-end identifier (`E...`). Populated after payment is confirmed.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="boleto" type="object">
+  Present when `method` is `"boleto"`. Contains boleto-specific fields.
+
+  <Expandable title="boleto fields">
+    <ResponseField name="boleto.barcode" type="string">
+      The numeric barcode line for the boleto.
+    </ResponseField>
+    <ResponseField name="boleto.url" type="string">
+      A hosted URL to view or download the printable boleto PDF.
+    </ResponseField>
+    <ResponseField name="boleto.due_date" type="string">
+      The boleto expiry date in `YYYY-MM-DD` format.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="card" type="object">
+  Present when `method` is `"credit_card"` or `"debit_card"`. Contains card-specific fields.
+
+  <Expandable title="card fields">
+    <ResponseField name="card.last4" type="string">
+      Last four digits of the card number.
+    </ResponseField>
+    <ResponseField name="card.brand" type="string">
+      Card brand: `visa`, `mastercard`, `elo`, `amex`, `hipercard`.
+    </ResponseField>
+    <ResponseField name="card.installments" type="integer">
+      Number of installments agreed to.
+    </ResponseField>
+    <ResponseField name="card.authorization_code" type="string">
+      Authorization code returned by the issuing bank.
+    </ResponseField>
+    <ResponseField name="card.nsu" type="string">
+      Network Sequence Unit (NSU) from the acquirer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Responses
+
+<Tabs>
+  <Tab title="PIX — pending">
+    ```json
+    {
+      "id": "pay_01HXYZ123456ABCDEF",
+      "status": "pending",
+      "method": "pix",
+      "amount": 4990,
+      "currency": "BRL",
+      "description": "Pedido #1042 — Camiseta MoneyDev",
+      "customer": {
+        "id": "cus_01HABC789",
+        "name": "João da Silva",
+        "email": "joao.silva@email.com"
+      },
+      "created_at": "2025-07-14T13:00:00Z",
+      "paid_at": null,
+      "pix": {
+        "qr_code": "00020126580014br.gov.bcb.pix0136...",
+        "qr_code_url": "https://api.moneydev.com.br/v1/payments/pay_01HXYZ123456ABCDEF/pix/qr",
+        "expires_at": "2025-07-14T14:00:00Z",
+        "end_to_end_id": null
+      },
+      "boleto": null,
+      "card": null,
+      "metadata": {
+        "order_id": "1042",
+        "store": "loja-sp"
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Credit Card — paid">
+    ```json
+    {
+      "id": "pay_01HXYZ999888GHIJKL",
+      "status": "paid",
+      "method": "credit_card",
+      "amount": 19900,
+      "currency": "BRL",
+      "description": "Assinatura Pro — Julho 2025",
+      "customer": {
+        "id": "cus_01HABC321",
+        "name": "Maria Oliveira",
+        "email": "maria.oliveira@email.com"
+      },
+      "created_at": "2025-07-14T15:30:00Z",
+      "paid_at": "2025-07-14T15:30:04Z",
+      "pix": null,
+      "boleto": null,
+      "card": {
+        "last4": "4242",
+        "brand": "visa",
+        "installments": 3,
+        "authorization_code": "AUTH123456",
+        "nsu": "NSU78901234"
+      },
+      "metadata": {}
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,89 @@
+---
+title: "MoneyDev REST API Overview — Getting Started Guide"
+sidebarTitle: "Overview"
+description: "Explore the MoneyDev REST API: base URL, versioning, request format, idempotency, rate limits, and official SDKs for Node.js, Python, PHP, and Ruby."
+---
+
+The MoneyDev REST API gives you programmatic access to the full MoneyDev payments platform. You can create and capture payments, manage customers, configure webhooks, and query transaction history — all over HTTPS with JSON request and response bodies.
+
+## Base URL
+
+Every API request is made to the following base URL:
+
+```text
+https://api.moneydev.com.br/v1
+```
+
+## Versioning
+
+The current version of the API is **v1**, embedded directly in the URL path. When breaking changes are introduced, a new version will be released under a new path prefix (e.g. `/v2`). Non-breaking additions — new fields, new endpoints — are made to the current version without notice.
+
+## Request Format
+
+Send all request bodies as JSON and include the `Content-Type: application/json` header on every mutating request (`POST`, `PUT`, `PATCH`). Query parameters are used for filtering and pagination on `GET` requests.
+
+```http
+Content-Type: application/json
+Authorization: Bearer YOUR_API_KEY
+```
+
+## Response Format
+
+Every response body is JSON.
+
+- **Success** — the API returns a `2xx` status code alongside the created or updated resource object.
+- **Error** — the API returns a `4xx` or `5xx` status code alongside a structured [error object](/api-reference/errors).
+
+## Idempotency
+
+To safely retry requests without accidentally duplicating actions (such as double-charging a customer), include an `Idempotency-Key` header containing a UUID that is unique to each logical operation. The API caches the result of the first request for 24 hours and returns it unchanged on any subsequent request that carries the same key.
+
+```http
+Idempotency-Key: e9f3a12b-8c47-4d1e-9b62-0a5f3c2d7e81
+```
+
+See the [errors reference](/api-reference/errors#idempotency-errors) for behavior when the same key is reused with different parameters.
+
+## Rate Limits
+
+The API allows up to **1 000 requests per minute** per API key. Exceeding that limit returns a `429 Too Many Requests` response. The following headers are included on every response to help you track consumption:
+
+| Header | Description |
+|---|---|
+| `X-RateLimit-Limit` | Maximum requests allowed per minute. |
+| `X-RateLimit-Remaining` | Requests remaining in the current window. |
+| `X-RateLimit-Reset` | Unix timestamp (seconds) when the window resets. |
+
+## Quick Start: List Payments
+
+```bash
+curl https://api.moneydev.com.br/v1/payments \
+  -H "Authorization: Bearer sk_live_yourkey" \
+  -H "Content-Type: application/json"
+```
+
+## SDKs
+
+Official SDKs are available in the most common server-side languages. Install the one that matches your stack:
+
+<CodeGroup>
+
+```bash Node.js
+npm install @moneydev/node
+```
+
+```bash Python
+pip install moneydev
+```
+
+```bash PHP
+composer require moneydev/moneydev-php
+```
+
+```bash Ruby
+gem install moneydev
+```
+
+</CodeGroup>
+
+All SDKs wrap the REST API, handle authentication, and surface errors as typed exceptions. Refer to each SDK's README on GitHub for full usage documentation.

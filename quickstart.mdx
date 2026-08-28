@@ -1,0 +1,130 @@
+---
+title: "MoneyDev Quickstart: Your First PIX Payment (5 Min)"
+sidebarTitle: "Quickstart"
+description: "Go from a new MoneyDev account to a working PIX payment in under 5 minutes. Covers account creation, API key setup, and your first REST API charge."
+---
+
+This guide walks you through everything you need to go from a brand-new MoneyDev account to a working PIX payment in under five minutes. You'll create your account, grab your test API keys, fire off your first charge, and learn how to listen for the payment confirmation — all before you write a single line of production code.
+
+<Tip>
+  All examples in this guide use a test API key (prefixed `sk_test_`). Test keys are completely free to use and never process real money. You can run every request below safely without affecting live funds.
+</Tip>
+
+<Steps>
+  <Step title="Create Your Account">
+    Head to [dashboard.moneydev.com.br](https://dashboard.moneydev.com.br) and click **Create account**. Fill in your name, email address, and a strong password, then verify your email address using the link MoneyDev sends you.
+
+    Once you've confirmed your email, you'll land on the MoneyDev Dashboard — your home base for managing payments, viewing reports, and configuring your integration.
+  </Step>
+
+  <Step title="Get Your API Keys">
+    In the Dashboard, navigate to **Settings → API Keys**. You'll see two types of keys:
+
+    | Key type | Prefix      | Purpose                                      |
+    |----------|-------------|----------------------------------------------|
+    | Test     | `sk_test_`  | Development and sandbox testing (no real money) |
+    | Live     | `sk_live_`  | Production requests that process real payments  |
+
+    Copy your **test secret key** — it looks like `sk_test_4eC39HqLyjWDarjtT7en` — and keep it somewhere safe. You'll use it in the next step.
+
+    <Warning>
+      Never share your secret key or commit it to source control. If you believe a key has been compromised, rotate it immediately from the **API Keys** page.
+    </Warning>
+  </Step>
+
+  <Step title="Make Your First PIX Payment">
+    Send a `POST` request to the `/v1/payments` endpoint with your API key in the `Authorization` header and a JSON body describing the charge.
+
+    ```bash
+    curl --request POST \
+      --url https://api.moneydev.com.br/v1/payments \
+      --header 'Authorization: Bearer sk_test_4eC39HqLyjWDarjtT7en' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "method": "pix",
+        "amount": 5000,
+        "currency": "BRL",
+        "description": "Order #1042 — Premium Plan",
+        "customer": {
+          "name": "João da Silva",
+          "email": "joao.silva@example.com",
+          "cpf": "123.456.789-09"
+        }
+      }'
+    ```
+
+    A few things to note about the request body:
+
+    - **`amount`** is expressed in centavos (the smallest BRL unit), so `5000` equals R$50,00.
+    - **`currency`** must be `"BRL"` for all MoneyDev transactions.
+    - **`customer.cpf`** is required for PIX and boleto payments under Brazilian regulations.
+
+    A successful request returns a `201 Created` response with a payment object, including the PIX QR code your customer will scan to complete the payment:
+
+    ```json
+    {
+      "id": "pay_3Lp8QrNzT9mKvX2wJ6hY",
+      "status": "pending",
+      "method": "pix",
+      "amount": 5000,
+      "currency": "BRL",
+      "description": "Order #1042 — Premium Plan",
+      "customer": {
+        "name": "João da Silva",
+        "email": "joao.silva@example.com",
+        "cpf": "123.456.789-09"
+      },
+      "pix": {
+        "qr_code": "00020126580014br.gov.bcb.pix0136a629532e-7693-4846-852d-1bbff817b5a8...",
+        "qr_code_url": "https://api.moneydev.com.br/v1/payments/pay_3Lp8QrNzT9mKvX2wJ6hY/pix/qrcode.png",
+        "expires_at": "2024-08-15T18:30:00Z"
+      },
+      "created_at": "2024-08-15T17:30:00Z"
+    }
+    ```
+
+    Display the `pix.qr_code_url` image or the raw `pix.qr_code` string (as a copyable Pix Copia e Cola code) in your checkout UI so the customer can pay.
+  </Step>
+
+  <Step title="Check Payment Status">
+    After the customer scans the QR code, MoneyDev updates the payment's `status` from `pending` to `paid`. You can poll the payment at any time using its `id`:
+
+    ```bash
+    curl --request GET \
+      --url https://api.moneydev.com.br/v1/payments/pay_3Lp8QrNzT9mKvX2wJ6hY \
+      --header 'Authorization: Bearer sk_test_4eC39HqLyjWDarjtT7en'
+    ```
+
+    The response mirrors the payment object from the creation step, with the `status` field reflecting the current state:
+
+    | Status      | Meaning                                              |
+    |-------------|------------------------------------------------------|
+    | `pending`   | Awaiting customer action (QR code not yet scanned)   |
+    | `paid`      | Payment confirmed and funds reserved                 |
+    | `expired`   | PIX QR code expired before the customer paid         |
+    | `refunded`  | Payment was fully refunded                           |
+    | `cancelled` | Payment was cancelled before completion              |
+
+    Polling works well for simple use cases, but for production we strongly recommend using **webhooks** (see the next step) so you're notified the instant a payment status changes.
+  </Step>
+
+  <Step title="Receive the Webhook">
+    Instead of polling, register a webhook endpoint in **Dashboard → Webhooks → Add endpoint**. MoneyDev will `POST` a signed event payload to your URL whenever a payment status changes — for example, when a PIX payment transitions from `pending` to `paid`.
+
+    Your endpoint should:
+    1. Respond with a `200 OK` within **5 seconds** to acknowledge receipt.
+    2. Verify the `X-MoneyDev-Signature` header to confirm the event came from MoneyDev.
+    3. Process the event asynchronously (queue it if needed) to avoid timeouts.
+
+    See the [Webhooks guide](/concepts/webhooks) for full details on payload structure and signature verification.
+  </Step>
+</Steps>
+
+## Next Steps
+
+You've just processed your first MoneyDev payment. Here's where to go from here:
+
+- **[Authentication](/authentication)** — Understand API keys, key types, and security best practices.
+- **[Payment Methods](/payment-methods/pix)** — Deep dives on PIX, boleto, and credit card flows.
+- **[API Reference](/api-reference/overview)** — Complete reference for every endpoint and parameter.
+- **[Guides](/guides/accept-payment)** — End-to-end integration walkthroughs for common scenarios.

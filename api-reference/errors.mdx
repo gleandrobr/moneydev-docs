@@ -1,0 +1,177 @@
+---
+title: "MoneyDev API Errors: Status Codes and Error Objects"
+sidebarTitle: "Errors"
+description: "MoneyDev API errors include a code, message, param, and details field. See HTTP status codes and examples for 400, 401, 404, 422, 429, and 500 responses."
+---
+
+When the MoneyDev API cannot fulfill a request, it returns an HTTP status code in the `4xx` or `5xx` range alongside a structured JSON error object. Your integration should always inspect both the HTTP status and the `error.code` field to determine the correct recovery action.
+
+## Error Object
+
+Every error response has the following structure:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "The amount must be a positive integer.",
+    "param": "amount",
+    "details": [
+      {
+        "field": "amount",
+        "issue": "Must be greater than 0."
+      }
+    ]
+  }
+}
+```
+
+<ResponseField name="error.code" type="string" required>
+  A machine-readable string identifying the error type. Use this field — not the HTTP status or the message — to drive programmatic error handling.
+</ResponseField>
+
+<ResponseField name="error.message" type="string" required>
+  A human-readable description of the error, suitable for logging and debugging. Do not display this string directly to end users without sanitising it first.
+</ResponseField>
+
+<ResponseField name="error.param" type="string | null">
+  The name of the request parameter that caused the error, if the error is attributable to a single field. `null` when the error is not parameter-specific.
+</ResponseField>
+
+<ResponseField name="error.details" type="array | null">
+  An array of objects providing per-field validation detail. Each object contains a `field` (string) and an `issue` (string). `null` when there are no per-field details.
+</ResponseField>
+
+## HTTP Status Codes
+
+| Status | Meaning | When you see it |
+|---|---|---|
+| `200 OK` | Success | The request succeeded and the response body contains the resource. |
+| `201 Created` | Resource created | A `POST` request successfully created a new resource. |
+| `400 Bad Request` | Malformed request | The request body is invalid JSON or a required parameter is missing. |
+| `401 Unauthorized` | Authentication failed | The API key is missing, malformed, or revoked. |
+| `404 Not Found` | Resource not found | The requested resource ID does not exist or is not accessible with your key. |
+| `409 Conflict` | Idempotency conflict | The same `Idempotency-Key` was used with different request parameters. |
+| `422 Unprocessable Entity` | Validation error | The request was well-formed but failed business-rule validation (e.g. insufficient funds). |
+| `429 Too Many Requests` | Rate limit exceeded | Your integration has exceeded 1 000 requests per minute. |
+| `500 Internal Server Error` | Server error | An unexpected error occurred on MoneyDev's servers. |
+
+## Error Examples
+
+### 400 — Validation Error
+
+Returned when a required field is missing or a value has the wrong type.
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "The amount must be a positive integer.",
+    "param": "amount",
+    "details": [
+      {
+        "field": "amount",
+        "issue": "Must be greater than 0."
+      }
+    ]
+  }
+}
+```
+
+### 401 — Unauthorized
+
+Returned when the API key is missing, malformed, or revoked. See the [authentication guide](/api-reference/authentication) for troubleshooting steps.
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Invalid API key provided.",
+    "param": null,
+    "details": null
+  }
+}
+```
+
+### 404 — Not Found
+
+Returned when you request a resource that does not exist or belongs to a different account.
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "No payment with ID pay_abc123 was found.",
+    "param": "id",
+    "details": null
+  }
+}
+```
+
+### 422 — Unprocessable Entity
+
+Returned when the request is well-formed but fails a business rule — for example, attempting to capture a payment that has already been refunded or charge an amount that exceeds the card limit.
+
+```json
+{
+  "error": {
+    "code": "insufficient_funds",
+    "message": "The card was declined due to insufficient funds.",
+    "param": null,
+    "details": null
+  }
+}
+```
+
+### 429 — Rate Limit Exceeded
+
+Returned when your integration exceeds 1 000 requests per minute. Wait until the window resets (indicated by `X-RateLimit-Reset`) before retrying.
+
+```json
+{
+  "error": {
+    "code": "rate_limit_exceeded",
+    "message": "Too many requests. Please retry after 1 second.",
+    "param": null,
+    "details": null
+  }
+}
+```
+
+### 500 — Internal Server Error
+
+Returned when an unexpected error occurs on MoneyDev's servers. These errors are transient — retry the request using exponential backoff with your original `Idempotency-Key`.
+
+```json
+{
+  "error": {
+    "code": "internal_server_error",
+    "message": "An unexpected error occurred. Please try again or contact support if the issue persists.",
+    "param": null,
+    "details": null
+  }
+}
+```
+
+## Idempotency Errors
+
+If you send a request using an `Idempotency-Key` that was already used for a **different** set of parameters, the API returns `409 Conflict`:
+
+```json
+{
+  "error": {
+    "code": "idempotency_conflict",
+    "message": "This Idempotency-Key was used with different request parameters.",
+    "param": "Idempotency-Key",
+    "details": null
+  }
+}
+```
+
+To resolve this, generate a fresh UUID as the `Idempotency-Key` and resend the request with the intended parameters. Never reuse a key across logically different operations.
+
+## 5xx Errors and Retries
+
+<Note>
+  `5xx` errors indicate a transient problem on MoneyDev's infrastructure and are safe to retry. Use an **exponential backoff** strategy — for example, retry after 1 s, 2 s, 4 s, 8 s — and include your original `Idempotency-Key` on each retry attempt so that the operation is not duplicated once the server recovers. If `5xx` errors persist for more than a few minutes, check the [MoneyDev Status Page](https://status.moneydev.com.br) for ongoing incidents.
+</Note>

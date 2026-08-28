@@ -1,0 +1,125 @@
+---
+title: "MoneyDev API Error Codes and HTTP Status Reference"
+sidebarTitle: "Errors"
+description: "Understand MoneyDev API error codes and HTTP status codes. Learn how to handle declined payments, auth errors, and validation failures in your integration."
+---
+
+MoneyDev uses standard HTTP status codes to indicate whether a request succeeded or failed. When a request fails, the response body always contains a JSON error object that gives you a machine-readable `code`, a human-readable `message`, and — when the failure is tied to a specific request parameter — the `param` that caused it. You should branch your error-handling logic on `code`, not on `message`, because messages may change over time.
+
+## Error Response Format
+
+```json
+{
+  "error": {
+    "code": "card_declined",
+    "message": "The card was declined by the issuer.",
+    "param": null
+  }
+}
+```
+
+When the error is tied to a specific field, `param` contains the field name:
+
+```json
+{
+  "error": {
+    "code": "invalid_cpf",
+    "message": "The CPF provided is not valid.",
+    "param": "customer.cpf"
+  }
+}
+```
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|---|---|
+| `200` | Success — the request completed as expected |
+| `201` | Resource created — a new object was created successfully |
+| `400` | Bad request — the request is malformed or missing required fields |
+| `401` | Unauthorized — the API key is missing, revoked, or invalid |
+| `404` | Resource not found — the requested object does not exist |
+| `409` | Conflict — a duplicate request was detected (check `idempotency_key`) |
+| `422` | Unprocessable entity — the request is valid but violates a business rule |
+| `429` | Rate limit exceeded — you have sent too many requests in a short window |
+| `500` | Internal server error — something went wrong on MoneyDev's side |
+
+For `5xx` errors, implement exponential back-off and retry. For `4xx` errors (except `429`), retrying the identical request will produce the same failure — fix the request first.
+
+## Error Codes
+
+| Code | Description |
+|---|---|
+| `card_declined` | The card was declined by the issuing bank |
+| `insufficient_funds` | The card does not have enough funds to cover the charge |
+| `invalid_card_number` | The card number fails the Luhn check or is not recognized |
+| `expired_card` | The card's expiry date has passed |
+| `invalid_cvv` | The CVV provided does not match the card |
+| `card_velocity_exceeded` | Too many charge attempts on this card in a short period |
+| `invalid_cpf` | The CPF number is malformed or does not exist in the Receita Federal database |
+| `invalid_cnpj` | The CNPJ number is malformed or not registered |
+| `payment_not_found` | No payment exists for the given ID |
+| `amount_too_small` | The charge amount is below the minimum of R$1,00 |
+| `amount_too_large` | The charge amount exceeds the maximum allowed limit |
+| `pix_key_not_found` | The PIX key provided is not registered with any financial institution |
+| `boleto_expired` | The boleto's due date has passed and can no longer be paid |
+| `refund_amount_exceeds_payment` | The requested refund amount is greater than the original payment amount |
+| `authentication_required` | 3DS authentication is required for this card and was not completed |
+| `rate_limit_exceeded` | Your integration has exceeded the allowed request rate — back off and retry |
+
+## Handling Errors in Your Integration
+
+Structure your API calls inside a `try/catch` block and inspect `error.code` to decide how to respond to each failure class:
+
+```javascript
+const Moneydev = require("moneydev-node");
+const client = new Moneydev(process.env.MONEYDEV_API_KEY);
+
+async function chargeCard(paymentData) {
+  try {
+    const payment = await client.payments.create(paymentData);
+    return { success: true, payment };
+  } catch (err) {
+    const code = err?.error?.code;
+
+    switch (code) {
+      case "card_declined":
+      case "insufficient_funds":
+      case "expired_card":
+      case "invalid_cvv":
+        // Surface a friendly message and present a new payment form.
+        return { success: false, userMessage: "Your card could not be charged. Please try a different card." };
+
+      case "invalid_cpf":
+      case "invalid_cnpj":
+        return { success: false, userMessage: "The document number you entered is invalid. Please check and try again." };
+
+      case "authentication_required":
+        // Redirect the customer through 3DS.
+        return { success: false, requiresAction: true, nextAction: err?.error?.next_action };
+
+      case "rate_limit_exceeded":
+        // Back off and retry after the window resets.
+        console.warn("Rate limit hit — retrying after delay.");
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        return chargeCard(paymentData);
+
+      default:
+        // Log unexpected errors and surface a generic message.
+        console.error("Unexpected MoneyDev error:", err);
+        return { success: false, userMessage: "An unexpected error occurred. Please try again shortly." };
+    }
+  }
+}
+```
+
+Key principles:
+
+- **Log the full error object** server-side so you can diagnose issues in production.
+- **Never expose raw `message` strings** directly to end users — write copy that is appropriate for your product.
+- **Use `idempotency_key`** on payment creation requests so that network retries do not create duplicate charges.
+- **Monitor `429` responses** — a spike may indicate a runaway retry loop or a traffic burst that needs throttling.
+
+<Warning>
+When you receive a `card_declined` error, **do not retry the same request automatically**. An immediate retry will almost always produce a second decline and may trigger `card_velocity_exceeded`, locking the card from further attempts. Instead, present a fresh payment form and let the customer choose to try a different card or payment method.
+</Warning>
