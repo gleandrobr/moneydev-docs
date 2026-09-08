@@ -84,7 +84,7 @@ Este guia percorre o caminho completo: obter um token de acesso, modelar o que v
     | `canceled` | Cancelado antes do pagamento |
 
     <Note>
-      Um webhook para o seller no evento `completed` está no roadmap. Por enquanto, consulte este endpoint.
+      Para não consultar em loop, assine o webhook [`payment.succeeded`](/webhooks/overview). Como ele não repete em caso de falha, mantenha esta consulta como reconciliação.
     </Note>
   </Step>
 </Steps>

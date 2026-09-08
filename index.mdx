@@ -19,6 +19,9 @@ A MoneyDev é um gateway de pagamentos para o Brasil. A API REST permite cadastr
   <Card title="Checkouts" icon="cart-shopping" href="/api-reference/checkouts/create">
     Abra um checkout e receba o pagamento.
   </Card>
+  <Card title="Webhooks" icon="webhook" href="/webhooks/overview">
+    Seja avisado quando um pagamento é confirmado, recusado ou estornado.
+  </Card>
 </CardGroup>
 
 ## URL base
@@ -86,6 +89,6 @@ Toda resposta traz o header `X-Request-Id`, e os corpos de erro repetem esse val
     [Crie um checkout](/api-reference/checkouts/create) para uma oferta. A resposta inclui uma `checkout_url`.
   </Step>
   <Step title="Envie o comprador para pagar">
-    Redirecione-o para a `checkout_url`, a página hospedada onde ele paga com Pix. Consulte [o checkout](/api-reference/checkouts/retrieve) periodicamente até o `status` ser `completed`.
+    Redirecione-o para a `checkout_url`, a página hospedada onde ele paga com Pix. Consulte [o checkout](/api-reference/checkouts/retrieve) até o `status` ser `completed`, ou assine o webhook [`payment.succeeded`](/webhooks/overview) para ser avisado — mantendo a consulta como reconciliação.
   </Step>
 </Steps>

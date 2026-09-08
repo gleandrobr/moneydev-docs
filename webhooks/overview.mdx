@@ -1,0 +1,71 @@
+---
+title: "Webhooks"
+sidebarTitle: "Visão geral"
+description: "Receba um POST no seu servidor quando um pagamento é confirmado, recusado ou estornado, em vez de consultar o checkout em loop."
+---
+
+A MoneyDev envia um `POST` para uma URL sua sempre que um pagamento muda de estado. Assim você reage na hora a um pagamento confirmado, sem ficar consultando [o checkout](/api-reference/checkouts/retrieve) periodicamente.
+
+<Warning>
+  A entrega é feita **uma única vez, sem repetição**, com timeout de 8 segundos. Se o seu endpoint estiver fora do ar, lento, ou responder um status fora da faixa `2xx` no momento do evento, aquele evento **não é reenviado**. Trate o webhook como uma otimização e mantenha `GET /v1/checkouts/{checkoutId}` como a fonte da verdade.
+</Warning>
+
+## Eventos disponíveis
+
+| Evento | Quando dispara |
+| --- | --- |
+| `payment.succeeded` | O pagamento foi confirmado |
+| `payment.failed` | O pagamento foi recusado |
+| `payment.chargedback` | Um chargeback foi registrado para o pagamento |
+
+O corpo de cada um está em [Referência de eventos](/webhooks/events).
+
+## Criar uma assinatura
+
+Webhooks são configurados no Dashboard — não há endpoint de API para gerenciá-los.
+
+<Steps>
+  <Step title="Abra Desenvolvedores → Webhooks">
+    No [Dashboard](https://dashboard.moneydev.com.br), vá em **Desenvolvedores** e abra a aba **Webhooks**.
+  </Step>
+  <Step title="Cadastre o endpoint">
+    Informe um **nome**, a **URL** (precisa ser `https://`) e marque os **tipos de evento** que quer receber.
+  </Step>
+  <Step title="Guarde o signing secret">
+    Ao criar, a MoneyDev mostra um secret `whsec_…` **uma única vez**. Ele é a chave usada para [verificar a assinatura](/webhooks/signature) de cada entrega e não pode ser recuperado depois — só os últimos 4 caracteres continuam visíveis no Dashboard. Se ele vazar, gere uma nova assinatura e apague a antiga.
+  </Step>
+</Steps>
+
+## Gerenciar no Dashboard
+
+| Ação | O que faz |
+| --- | --- |
+| **Pausar / Retomar** | Uma assinatura pausada para de receber entregas; pode ser retomada quando quiser. |
+| **Remover** | Desativa a assinatura de forma permanente. O histórico de entregas é preservado. |
+| **Testar** | Envia um evento sintético (`type: "test"`) pela mesma rotina de assinatura e entrega de um evento real. |
+| **Ver entregas** | Histórico por assinatura: status HTTP da resposta, um trecho do corpo devolvido e a mensagem de erro, quando houver. |
+
+## Como a entrega funciona
+
+- **Uma tentativa por evento.** Não há repetição automática nem fila de retry. Uma entrega que falha fica registrada como `failed` e não é refeita.
+- **Timeout de 8 segundos.** Se o seu servidor não responde nesse tempo, conta como falha.
+- **Sucesso é `2xx`.** Qualquer outro status — ou erro de conexão/TLS — conta como falha.
+- **Sem ordem garantida.** Dois eventos próximos podem chegar fora de ordem.
+- Todas as assinaturas ativas que incluem aquele tipo de evento recebem a entrega, em paralelo.
+
+### No seu endpoint
+
+<Steps>
+  <Step title="Responda rápido com 2xx">
+    Confirme o recebimento antes de processar. Faça o trabalho pesado depois, de forma assíncrona — a janela é menor que 8 s.
+  </Step>
+  <Step title="Verifique a assinatura">
+    Rejeite qualquer requisição cuja assinatura não bata. Veja [Verificar a assinatura](/webhooks/signature).
+  </Step>
+  <Step title="Seja idempotente">
+    Use o `id` do evento para descartar duplicatas antes de agir.
+  </Step>
+  <Step title="Reconcilie pelo checkout">
+    Como não há retry, rode uma verificação periódica de `GET /v1/checkouts/{checkoutId}` para os checkouts que você ainda espera pagar — isso cobre eventos que nunca chegaram.
+  </Step>
+</Steps>
