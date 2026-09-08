@@ -42,5 +42,5 @@ curl https://api.moneydev.com.br/v1/checkouts/checkout_7f8a9b0c-1d2e-4f3a-8b4c-5
 | `404` | `checkout_not_found` | Não existe esse checkout na sua conta |
 
 <Note>
-  Um webhook para o seller no evento `completed` está no roadmap. Por enquanto, consulte este endpoint periodicamente.
+  Para ser avisado sem ficar consultando, assine o webhook [`payment.succeeded`](/webhooks/events#payment-succeeded). Ele não repete em caso de falha, então mantenha uma consulta periódica deste endpoint como reconciliação. Veja [Webhooks](/webhooks/overview).
 </Note>
