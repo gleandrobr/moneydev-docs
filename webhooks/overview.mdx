@@ -6,10 +6,6 @@ description: "Receba um POST no seu servidor quando um pagamento é confirmado, 
 
 A MoneyDev envia um `POST` para uma URL sua sempre que um pagamento muda de estado. Assim você reage na hora a um pagamento confirmado, sem ficar consultando [o checkout](/api-reference/checkouts/retrieve) periodicamente.
 
-<Warning>
-  A entrega é feita **uma única vez, sem repetição**, com timeout de 8 segundos. Se o seu endpoint estiver fora do ar, lento, ou responder um status fora da faixa `2xx` no momento do evento, aquele evento **não é reenviado**. Trate o webhook como uma otimização e mantenha `GET /v1/checkouts/{checkoutId}` como a fonte da verdade.
-</Warning>
-
 ## Eventos disponíveis
 
 | Evento | Quando dispara |
@@ -45,15 +41,7 @@ Webhooks são configurados no Dashboard — não há endpoint de API para gerenc
 | **Testar** | Envia um evento sintético (`type: "test"`) pela mesma rotina de assinatura e entrega de um evento real. |
 | **Ver entregas** | Histórico por assinatura: status HTTP da resposta, um trecho do corpo devolvido e a mensagem de erro, quando houver. |
 
-## Como a entrega funciona
-
-- **Uma tentativa por evento.** Não há repetição automática nem fila de retry. Uma entrega que falha fica registrada como `failed` e não é refeita.
-- **Timeout de 8 segundos.** Se o seu servidor não responde nesse tempo, conta como falha.
-- **Sucesso é `2xx`.** Qualquer outro status — ou erro de conexão/TLS — conta como falha.
-- **Sem ordem garantida.** Dois eventos próximos podem chegar fora de ordem.
-- Todas as assinaturas ativas que incluem aquele tipo de evento recebem a entrega, em paralelo.
-
-### No seu endpoint
+## No seu endpoint
 
 <Steps>
   <Step title="Responda rápido com 2xx">
