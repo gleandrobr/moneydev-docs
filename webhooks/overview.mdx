@@ -6,10 +6,6 @@ description: "Receba um POST no seu servidor quando um pagamento é confirmado, 
 
 A MoneyDev envia um `POST` para uma URL sua sempre que um pagamento muda de estado. Assim você reage na hora a um pagamento confirmado, sem ficar consultando [o checkout](/api-reference/checkouts/retrieve) periodicamente.
 
-<Warning>
-  A entrega é feita **uma única vez, sem repetição**, com timeout de 8 segundos. Se o seu endpoint estiver fora do ar, lento, ou responder um status fora da faixa `2xx` no momento do evento, aquele evento **não é reenviado**. Trate o webhook como uma otimização e mantenha `GET /v1/checkouts/{checkoutId}` como a fonte da verdade.
-</Warning>
-
 ## Eventos disponíveis
 
 | Evento | Quando dispara |
