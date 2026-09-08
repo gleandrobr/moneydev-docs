@@ -70,7 +70,9 @@
           {
             "tab": "Webhooks",
             "pages": [
-              "webhooks/overview"
+              "webhooks/overview",
+              "webhooks/events",
+              "webhooks/signature"
             ]
           }
         ]
